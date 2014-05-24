@@ -617,13 +617,13 @@ if __name__ == "__main__":
         main(sys.argv[1], sys.argv[2])
     else:
         print("""Run this script to generate a MySQL load script for the NPPES database:
-python npi_schema.py '/tmp/npidata_20050523-20140309.csv' '/tmp/nucc_taxonomy_140.csv'""")
+python create_nppes_schema_and_data_load.py '/tmp/npidata_20050523-20140309.csv' '/tmp/nucc_taxonomy_140.csv'""")
 
     #main("/tmp/npidata_20050523-20140309.csv", "/tmp/nucc_taxonomy_140.csv")
 
     #Loading the files
-    #python npi_schema.py > npi_schema.sql
-    #python npi_schema.py > npi_schema.sql
+    #python create_nppes_schema_and_data_load.py > npi_schema.sql
+    #python create_nppes_schema_and_data_load.py > npi_schema.sql
     #mysql -u root -pd
         #create database npi;
     #mysql -u root -p npi < npi_schema.sql

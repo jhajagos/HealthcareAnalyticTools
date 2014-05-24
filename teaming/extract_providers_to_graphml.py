@@ -1,5 +1,5 @@
 """
-Script to extract a sub-graph from the DocGraph data set that is loaded in a MySQL
+Script to extract a sub-graph from the Teaming dataset data set that is loaded in a MySQL
 database.
 
 Database connection is made through ODBC connection but could easily be modified for

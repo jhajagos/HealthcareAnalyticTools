@@ -1,4 +1,4 @@
-/* Load the 2012-2013 DocGraph Data with new fields into a database */
+/* Load the 2012-2013 Teaming Data with new fields into a database */
 
 create table teaming_graph_providers_2012_2013
     (npi_from char(10),
@@ -9,7 +9,7 @@ create table teaming_graph_providers_2012_2013
      
      
      
-LOAD DATA INFILE '/tmp/DocGraph-2012-2013-Days30.csv' INTO TABLE teaming_graph_providers_2012_2013
+LOAD DATA INFILE 'C:\\temp\\teaming_latest_30_day.csv' INTO TABLE teaming_graph_providers_2012_2013
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\n'
        (@npi_from, @npi_to, @shared_transaction_count, @patient_total, @same_day_total)

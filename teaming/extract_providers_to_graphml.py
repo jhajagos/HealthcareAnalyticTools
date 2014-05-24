@@ -26,7 +26,7 @@ def logger(string_to_write=""):
     print(string_to_write)
 
 
-def get_new_cursor(dsn_name="referral"):
+def get_new_cursor(dsn_name="teaming"):
     logger("Opening connection %s" % dsn_name)
     connection = odbc.connect("DSN=%s" % dsn_name, autocommit=True)
     return connection.cursor()

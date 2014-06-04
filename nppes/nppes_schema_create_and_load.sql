@@ -2087,13 +2087,13 @@ create table npi_summary_detailed as
             if(nh1.provider_credential_text is null,'',replace(nh1.Provider_Credential_Text,'.','')))
       end as provider_name,pl1.sequence_id,
       pl1.Healthcare_Provider_Taxonomy_Code as taxonomy_code
-     from npi.nppes_header nh1
-      left outer join npi.provider_licenses pl1 on pl1.npi = nh1.NPI
+     from nppes.nppes_header nh1
+      left outer join nppes.provider_licenses pl1 on pl1.npi = nh1.NPI
       ) fp
-     left outer join npi.healthcare_provider_taxonomies pt1 on pt1.taxonomy_code = fp.taxonomy_code
-     left outer join npi.healthcare_provider_taxonomy_processed hptp on hptp.npi = fp.npi
-     join npi.nppes_contact nc on nc.npi = fp.npi and nc.address_type = 'practice'
-     join npi.address a on a.address_hash = nc.address_hash;
+     left outer join nppes.healthcare_provider_taxonomies pt1 on pt1.taxonomy_code = fp.taxonomy_code
+     left outer join nppes.healthcare_provider_taxonomy_processed hptp on hptp.npi = fp.npi
+     join nppes.nppes_contact nc on nc.npi = fp.npi and nc.address_type = 'practice'
+     join nppes.address a on a.address_hash = nc.address_hash;
 
 
   create index idx_npi_summary on npi_summary_detailed (npi);

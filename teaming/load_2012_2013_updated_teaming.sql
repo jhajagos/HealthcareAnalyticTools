@@ -1,5 +1,7 @@
 /* Load the 2012-2013 Teaming Data with new fields into a database */
 
+use teaming;
+
 create table teaming_graph_providers_2012_2013
     (npi_from char(10),
      npi_to char(10),

@@ -4,6 +4,7 @@
 
  Author: Janos G. Hajagos 1/13/13
 */
+use nppes;
 
     drop table if exists NPPES_flat;
     create table NPPES_flat (
@@ -2058,7 +2059,7 @@ alter table nppes_contact drop column postal_code;
 alter table nppes_contact drop column address_formatted;
 alter table nppes_contact drop column address_flattened;
 
-update address set zip5 = left(postal_code, 5), zip4 = substring(postal_code, 6);
+update address set zip5 = left(postal_code, 5), zip4 = substring(postal_code, 6, 4);
 
 create table npi_summary_detailed as
  select fp.*,

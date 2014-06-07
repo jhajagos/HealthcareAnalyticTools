@@ -1,10 +1,20 @@
 /*
- MySQL Script to Load monthly NPPES into a
- database.
+ MySQL Script to load the NPPES CSV into a MySQL database. The script
+ normalizes the databases into several tables. It also maps the
+ hierarchical provider taxonomies into several binary variables. These
+ binary variables include is_hospital and is_physician.
 
- Author: Janos G. Hajagos 1/13/13
+ It also creates a summary table which makes it easy to join to other tables
+ for analytics.
+
+ Author: Janos G. Hajagos 6/7/14
+
+ Code is part of https://github.com/jhajagos/HealthcareAnalyticTools
+
 */
-use nppes;
+use teaming;
+
+/* Create the flat table to import the CSV file into */
 
     drop table if exists NPPES_flat;
     create table NPPES_flat (
@@ -324,6 +334,8 @@ use nppes;
     Authorized_Official_Credential_Text VARCHAR(20))
 ;
 
+
+/* Load CSV file into the flat table */
 LOAD DATA INFILE 'C:/temp/npidata_20050523-20140309.csv' INTO TABLE NPPES_flat
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\n'
@@ -646,324 +658,7 @@ Authorized_Official_Name_Suffix_Text = case @Authorized_Official_Name_Suffix_Tex
 Authorized_Official_Credential_Text = case @Authorized_Official_Credential_Text when '' then NULL else @Authorized_Official_Credential_Text end
 ;
 
-/*
-create view NPPESdata as (select
-   NPI as [NPI],
-   Entity_Type_Code as [Entity Type Code],
-   Replacement_NPI as [Replacement NPI],
-   Employer_Identification_Number_EIN as [Employer Identification Number (EIN)],
-   Provider_Organization_Name_Legal_Business_Name as [Provider Organization Name (Legal Business Name)],
-   Provider_Last_Name_Legal_Name as [Provider Last Name (Legal Name)],
-   Provider_First_Name as [Provider First Name],
-   Provider_Middle_Name as [Provider Middle Name],
-   Provider_Name_Prefix_Text as [Provider Name Prefix Text],
-   Provider_Name_Suffix_Text as [Provider Name Suffix Text],
-   Provider_Credential_Text as [Provider Credential Text],
-   Provider_Other_Organization_Name as [Provider Other Organization Name],
-   Provider_Other_Organization_Name_Type_Code as [Provider Other Organization Name Type Code],
-   Provider_Other_Last_Name as [Provider Other Last Name],
-   Provider_Other_First_Name as [Provider Other First Name],
-   Provider_Other_Middle_Name as [Provider Other Middle Name],
-   Provider_Other_Name_Prefix_Text as [Provider Other Name Prefix Text],
-   Provider_Other_Name_Suffix_Text as [Provider Other Name Suffix Text],
-   Provider_Other_Credential_Text as [Provider Other Credential Text],
-   Provider_Other_Last_Name_Type_Code as [Provider Other Last Name Type Code],
-   Provider_First_Line_Business_Mailing_Address as [Provider First Line Business Mailing Address],
-   Provider_Second_Line_Business_Mailing_Address as [Provider Second Line Business Mailing Address],
-   Provider_Business_Mailing_Address_City_Name as [Provider Business Mailing Address City Name],
-   Provider_Business_Mailing_Address_State_Name as [Provider Business Mailing Address State Name],
-   Provider_Business_Mailing_Address_Postal_Code as [Provider Business Mailing Address Postal Code],
-   Provider_Business_Mailing_Address_Country_Cod as [Provider Business Mailing Address Country Code (If outside U.S.)],
-   Provider_Business_Mailing_Address_Telephone_Number as [Provider Business Mailing Address Telephone Number],
-   Provider_Business_Mailing_Address_Fax_Number as [Provider Business Mailing Address Fax Number],
-   Provider_First_Line_Business_Practice_Location_Address as [Provider First Line Business Practice Location Address],
-   Provider_Second_Line_Business_Practice_Location_Address as [Provider Second Line Business Practice Location Address],
-   Provider_Business_Practice_Location_Address_City_Name as [Provider Business Practice Location Address City Name],
-   Provider_Business_Practice_Location_Address_State_Name as [Provider Business Practice Location Address State Name],
-   Provider_Business_Practice_Location_Address_Postal_Code as [Provider Business Practice Location Address Postal Code],
-   Provider_Business_Practice_Location_Address_Country_Cod as [Provider Business Practice Location Address Country Code (If outside U.S.)],
-   Provider_Business_Practice_Location_Address_Telephone_Number as [Provider Business Practice Location Address Telephone Number],
-   Provider_Business_Practice_Location_Address_Fax_Number as [Provider Business Practice Location Address Fax Number],
-   Provider_Enumeration_Date as [Provider Enumeration Date],
-   Last_Update_Date as [Last Update Date],
-   NPI_Deactivation_Reason_Code as [NPI Deactivation Reason Code],
-   NPI_Deactivation_Date as [NPI Deactivation Date],
-   NPI_Reactivation_Date as [NPI Reactivation Date],
-   Provider_Gender_Code as [Provider Gender Code],
-   Authorized_Official_Last_Name as [Authorized Official Last Name],
-   Authorized_Official_First_Name as [Authorized Official First Name],
-   Authorized_Official_Middle_Name as [Authorized Official Middle Name],
-   Authorized_Official_Title_or_Position as [Authorized Official Title or Position],
-   Authorized_Official_Telephone_Number as [Authorized Official Telephone Number],
-   Healthcare_Provider_Taxonomy_Code_1 as [Healthcare Provider Taxonomy Code_1],
-   Provider_License_Number_1 as [Provider License Number_1],
-   Provider_License_Number_State_Code_1 as [Provider License Number State Code_1],
-   Healthcare_Provider_Primary_Taxonomy_Switch_1 as [Healthcare Provider Primary Taxonomy Switch_1],
-   Healthcare_Provider_Taxonomy_Code_2 as [Healthcare Provider Taxonomy Code_2],
-   Provider_License_Number_2 as [Provider License Number_2],
-   Provider_License_Number_State_Code_2 as [Provider License Number State Code_2],
-   Healthcare_Provider_Primary_Taxonomy_Switch_2 as [Healthcare Provider Primary Taxonomy Switch_2],
-   Healthcare_Provider_Taxonomy_Code_3 as [Healthcare Provider Taxonomy Code_3],
-   Provider_License_Number_3 as [Provider License Number_3],
-   Provider_License_Number_State_Code_3 as [Provider License Number State Code_3],
-   Healthcare_Provider_Primary_Taxonomy_Switch_3 as [Healthcare Provider Primary Taxonomy Switch_3],
-   Healthcare_Provider_Taxonomy_Code_4 as [Healthcare Provider Taxonomy Code_4],
-   Provider_License_Number_4 as [Provider License Number_4],
-   Provider_License_Number_State_Code_4 as [Provider License Number State Code_4],
-   Healthcare_Provider_Primary_Taxonomy_Switch_4 as [Healthcare Provider Primary Taxonomy Switch_4],
-   Healthcare_Provider_Taxonomy_Code_5 as [Healthcare Provider Taxonomy Code_5],
-   Provider_License_Number_5 as [Provider License Number_5],
-   Provider_License_Number_State_Code_5 as [Provider License Number State Code_5],
-   Healthcare_Provider_Primary_Taxonomy_Switch_5 as [Healthcare Provider Primary Taxonomy Switch_5],
-   Healthcare_Provider_Taxonomy_Code_6 as [Healthcare Provider Taxonomy Code_6],
-   Provider_License_Number_6 as [Provider License Number_6],
-   Provider_License_Number_State_Code_6 as [Provider License Number State Code_6],
-   Healthcare_Provider_Primary_Taxonomy_Switch_6 as [Healthcare Provider Primary Taxonomy Switch_6],
-   Healthcare_Provider_Taxonomy_Code_7 as [Healthcare Provider Taxonomy Code_7],
-   Provider_License_Number_7 as [Provider License Number_7],
-   Provider_License_Number_State_Code_7 as [Provider License Number State Code_7],
-   Healthcare_Provider_Primary_Taxonomy_Switch_7 as [Healthcare Provider Primary Taxonomy Switch_7],
-   Healthcare_Provider_Taxonomy_Code_8 as [Healthcare Provider Taxonomy Code_8],
-   Provider_License_Number_8 as [Provider License Number_8],
-   Provider_License_Number_State_Code_8 as [Provider License Number State Code_8],
-   Healthcare_Provider_Primary_Taxonomy_Switch_8 as [Healthcare Provider Primary Taxonomy Switch_8],
-   Healthcare_Provider_Taxonomy_Code_9 as [Healthcare Provider Taxonomy Code_9],
-   Provider_License_Number_9 as [Provider License Number_9],
-   Provider_License_Number_State_Code_9 as [Provider License Number State Code_9],
-   Healthcare_Provider_Primary_Taxonomy_Switch_9 as [Healthcare Provider Primary Taxonomy Switch_9],
-   Healthcare_Provider_Taxonomy_Code_10 as [Healthcare Provider Taxonomy Code_10],
-   Provider_License_Number_10 as [Provider License Number_10],
-   Provider_License_Number_State_Code_10 as [Provider License Number State Code_10],
-   Healthcare_Provider_Primary_Taxonomy_Switch_10 as [Healthcare Provider Primary Taxonomy Switch_10],
-   Healthcare_Provider_Taxonomy_Code_11 as [Healthcare Provider Taxonomy Code_11],
-   Provider_License_Number_11 as [Provider License Number_11],
-   Provider_License_Number_State_Code_11 as [Provider License Number State Code_11],
-   Healthcare_Provider_Primary_Taxonomy_Switch_11 as [Healthcare Provider Primary Taxonomy Switch_11],
-   Healthcare_Provider_Taxonomy_Code_12 as [Healthcare Provider Taxonomy Code_12],
-   Provider_License_Number_12 as [Provider License Number_12],
-   Provider_License_Number_State_Code_12 as [Provider License Number State Code_12],
-   Healthcare_Provider_Primary_Taxonomy_Switch_12 as [Healthcare Provider Primary Taxonomy Switch_12],
-   Healthcare_Provider_Taxonomy_Code_13 as [Healthcare Provider Taxonomy Code_13],
-   Provider_License_Number_13 as [Provider License Number_13],
-   Provider_License_Number_State_Code_13 as [Provider License Number State Code_13],
-   Healthcare_Provider_Primary_Taxonomy_Switch_13 as [Healthcare Provider Primary Taxonomy Switch_13],
-   Healthcare_Provider_Taxonomy_Code_14 as [Healthcare Provider Taxonomy Code_14],
-   Provider_License_Number_14 as [Provider License Number_14],
-   Provider_License_Number_State_Code_14 as [Provider License Number State Code_14],
-   Healthcare_Provider_Primary_Taxonomy_Switch_14 as [Healthcare Provider Primary Taxonomy Switch_14],
-   Healthcare_Provider_Taxonomy_Code_15 as [Healthcare Provider Taxonomy Code_15],
-   Provider_License_Number_15 as [Provider License Number_15],
-   Provider_License_Number_State_Code_15 as [Provider License Number State Code_15],
-   Healthcare_Provider_Primary_Taxonomy_Switch_15 as [Healthcare Provider Primary Taxonomy Switch_15],
-   Other_Provider_Identifier_1 as [Other Provider Identifier_1],
-   Other_Provider_Identifier_Type_Code_1 as [Other Provider Identifier Type Code_1],
-   Other_Provider_Identifier_State_1 as [Other Provider Identifier State_1],
-   Other_Provider_Identifier_Issuer_1 as [Other Provider Identifier Issuer_1],
-   Other_Provider_Identifier_2 as [Other Provider Identifier_2],
-   Other_Provider_Identifier_Type_Code_2 as [Other Provider Identifier Type Code_2],
-   Other_Provider_Identifier_State_2 as [Other Provider Identifier State_2],
-   Other_Provider_Identifier_Issuer_2 as [Other Provider Identifier Issuer_2],
-   Other_Provider_Identifier_3 as [Other Provider Identifier_3],
-   Other_Provider_Identifier_Type_Code_3 as [Other Provider Identifier Type Code_3],
-   Other_Provider_Identifier_State_3 as [Other Provider Identifier State_3],
-   Other_Provider_Identifier_Issuer_3 as [Other Provider Identifier Issuer_3],
-   Other_Provider_Identifier_4 as [Other Provider Identifier_4],
-   Other_Provider_Identifier_Type_Code_4 as [Other Provider Identifier Type Code_4],
-   Other_Provider_Identifier_State_4 as [Other Provider Identifier State_4],
-   Other_Provider_Identifier_Issuer_4 as [Other Provider Identifier Issuer_4],
-   Other_Provider_Identifier_5 as [Other Provider Identifier_5],
-   Other_Provider_Identifier_Type_Code_5 as [Other Provider Identifier Type Code_5],
-   Other_Provider_Identifier_State_5 as [Other Provider Identifier State_5],
-   Other_Provider_Identifier_Issuer_5 as [Other Provider Identifier Issuer_5],
-   Other_Provider_Identifier_6 as [Other Provider Identifier_6],
-   Other_Provider_Identifier_Type_Code_6 as [Other Provider Identifier Type Code_6],
-   Other_Provider_Identifier_State_6 as [Other Provider Identifier State_6],
-   Other_Provider_Identifier_Issuer_6 as [Other Provider Identifier Issuer_6],
-   Other_Provider_Identifier_7 as [Other Provider Identifier_7],
-   Other_Provider_Identifier_Type_Code_7 as [Other Provider Identifier Type Code_7],
-   Other_Provider_Identifier_State_7 as [Other Provider Identifier State_7],
-   Other_Provider_Identifier_Issuer_7 as [Other Provider Identifier Issuer_7],
-   Other_Provider_Identifier_8 as [Other Provider Identifier_8],
-   Other_Provider_Identifier_Type_Code_8 as [Other Provider Identifier Type Code_8],
-   Other_Provider_Identifier_State_8 as [Other Provider Identifier State_8],
-   Other_Provider_Identifier_Issuer_8 as [Other Provider Identifier Issuer_8],
-   Other_Provider_Identifier_9 as [Other Provider Identifier_9],
-   Other_Provider_Identifier_Type_Code_9 as [Other Provider Identifier Type Code_9],
-   Other_Provider_Identifier_State_9 as [Other Provider Identifier State_9],
-   Other_Provider_Identifier_Issuer_9 as [Other Provider Identifier Issuer_9],
-   Other_Provider_Identifier_10 as [Other Provider Identifier_10],
-   Other_Provider_Identifier_Type_Code_10 as [Other Provider Identifier Type Code_10],
-   Other_Provider_Identifier_State_10 as [Other Provider Identifier State_10],
-   Other_Provider_Identifier_Issuer_10 as [Other Provider Identifier Issuer_10],
-   Other_Provider_Identifier_11 as [Other Provider Identifier_11],
-   Other_Provider_Identifier_Type_Code_11 as [Other Provider Identifier Type Code_11],
-   Other_Provider_Identifier_State_11 as [Other Provider Identifier State_11],
-   Other_Provider_Identifier_Issuer_11 as [Other Provider Identifier Issuer_11],
-   Other_Provider_Identifier_12 as [Other Provider Identifier_12],
-   Other_Provider_Identifier_Type_Code_12 as [Other Provider Identifier Type Code_12],
-   Other_Provider_Identifier_State_12 as [Other Provider Identifier State_12],
-   Other_Provider_Identifier_Issuer_12 as [Other Provider Identifier Issuer_12],
-   Other_Provider_Identifier_13 as [Other Provider Identifier_13],
-   Other_Provider_Identifier_Type_Code_13 as [Other Provider Identifier Type Code_13],
-   Other_Provider_Identifier_State_13 as [Other Provider Identifier State_13],
-   Other_Provider_Identifier_Issuer_13 as [Other Provider Identifier Issuer_13],
-   Other_Provider_Identifier_14 as [Other Provider Identifier_14],
-   Other_Provider_Identifier_Type_Code_14 as [Other Provider Identifier Type Code_14],
-   Other_Provider_Identifier_State_14 as [Other Provider Identifier State_14],
-   Other_Provider_Identifier_Issuer_14 as [Other Provider Identifier Issuer_14],
-   Other_Provider_Identifier_15 as [Other Provider Identifier_15],
-   Other_Provider_Identifier_Type_Code_15 as [Other Provider Identifier Type Code_15],
-   Other_Provider_Identifier_State_15 as [Other Provider Identifier State_15],
-   Other_Provider_Identifier_Issuer_15 as [Other Provider Identifier Issuer_15],
-   Other_Provider_Identifier_16 as [Other Provider Identifier_16],
-   Other_Provider_Identifier_Type_Code_16 as [Other Provider Identifier Type Code_16],
-   Other_Provider_Identifier_State_16 as [Other Provider Identifier State_16],
-   Other_Provider_Identifier_Issuer_16 as [Other Provider Identifier Issuer_16],
-   Other_Provider_Identifier_17 as [Other Provider Identifier_17],
-   Other_Provider_Identifier_Type_Code_17 as [Other Provider Identifier Type Code_17],
-   Other_Provider_Identifier_State_17 as [Other Provider Identifier State_17],
-   Other_Provider_Identifier_Issuer_17 as [Other Provider Identifier Issuer_17],
-   Other_Provider_Identifier_18 as [Other Provider Identifier_18],
-   Other_Provider_Identifier_Type_Code_18 as [Other Provider Identifier Type Code_18],
-   Other_Provider_Identifier_State_18 as [Other Provider Identifier State_18],
-   Other_Provider_Identifier_Issuer_18 as [Other Provider Identifier Issuer_18],
-   Other_Provider_Identifier_19 as [Other Provider Identifier_19],
-   Other_Provider_Identifier_Type_Code_19 as [Other Provider Identifier Type Code_19],
-   Other_Provider_Identifier_State_19 as [Other Provider Identifier State_19],
-   Other_Provider_Identifier_Issuer_19 as [Other Provider Identifier Issuer_19],
-   Other_Provider_Identifier_20 as [Other Provider Identifier_20],
-   Other_Provider_Identifier_Type_Code_20 as [Other Provider Identifier Type Code_20],
-   Other_Provider_Identifier_State_20 as [Other Provider Identifier State_20],
-   Other_Provider_Identifier_Issuer_20 as [Other Provider Identifier Issuer_20],
-   Other_Provider_Identifier_21 as [Other Provider Identifier_21],
-   Other_Provider_Identifier_Type_Code_21 as [Other Provider Identifier Type Code_21],
-   Other_Provider_Identifier_State_21 as [Other Provider Identifier State_21],
-   Other_Provider_Identifier_Issuer_21 as [Other Provider Identifier Issuer_21],
-   Other_Provider_Identifier_22 as [Other Provider Identifier_22],
-   Other_Provider_Identifier_Type_Code_22 as [Other Provider Identifier Type Code_22],
-   Other_Provider_Identifier_State_22 as [Other Provider Identifier State_22],
-   Other_Provider_Identifier_Issuer_22 as [Other Provider Identifier Issuer_22],
-   Other_Provider_Identifier_23 as [Other Provider Identifier_23],
-   Other_Provider_Identifier_Type_Code_23 as [Other Provider Identifier Type Code_23],
-   Other_Provider_Identifier_State_23 as [Other Provider Identifier State_23],
-   Other_Provider_Identifier_Issuer_23 as [Other Provider Identifier Issuer_23],
-   Other_Provider_Identifier_24 as [Other Provider Identifier_24],
-   Other_Provider_Identifier_Type_Code_24 as [Other Provider Identifier Type Code_24],
-   Other_Provider_Identifier_State_24 as [Other Provider Identifier State_24],
-   Other_Provider_Identifier_Issuer_24 as [Other Provider Identifier Issuer_24],
-   Other_Provider_Identifier_25 as [Other Provider Identifier_25],
-   Other_Provider_Identifier_Type_Code_25 as [Other Provider Identifier Type Code_25],
-   Other_Provider_Identifier_State_25 as [Other Provider Identifier State_25],
-   Other_Provider_Identifier_Issuer_25 as [Other Provider Identifier Issuer_25],
-   Other_Provider_Identifier_26 as [Other Provider Identifier_26],
-   Other_Provider_Identifier_Type_Code_26 as [Other Provider Identifier Type Code_26],
-   Other_Provider_Identifier_State_26 as [Other Provider Identifier State_26],
-   Other_Provider_Identifier_Issuer_26 as [Other Provider Identifier Issuer_26],
-   Other_Provider_Identifier_27 as [Other Provider Identifier_27],
-   Other_Provider_Identifier_Type_Code_27 as [Other Provider Identifier Type Code_27],
-   Other_Provider_Identifier_State_27 as [Other Provider Identifier State_27],
-   Other_Provider_Identifier_Issuer_27 as [Other Provider Identifier Issuer_27],
-   Other_Provider_Identifier_28 as [Other Provider Identifier_28],
-   Other_Provider_Identifier_Type_Code_28 as [Other Provider Identifier Type Code_28],
-   Other_Provider_Identifier_State_28 as [Other Provider Identifier State_28],
-   Other_Provider_Identifier_Issuer_28 as [Other Provider Identifier Issuer_28],
-   Other_Provider_Identifier_29 as [Other Provider Identifier_29],
-   Other_Provider_Identifier_Type_Code_29 as [Other Provider Identifier Type Code_29],
-   Other_Provider_Identifier_State_29 as [Other Provider Identifier State_29],
-   Other_Provider_Identifier_Issuer_29 as [Other Provider Identifier Issuer_29],
-   Other_Provider_Identifier_30 as [Other Provider Identifier_30],
-   Other_Provider_Identifier_Type_Code_30 as [Other Provider Identifier Type Code_30],
-   Other_Provider_Identifier_State_30 as [Other Provider Identifier State_30],
-   Other_Provider_Identifier_Issuer_30 as [Other Provider Identifier Issuer_30],
-   Other_Provider_Identifier_31 as [Other Provider Identifier_31],
-   Other_Provider_Identifier_Type_Code_31 as [Other Provider Identifier Type Code_31],
-   Other_Provider_Identifier_State_31 as [Other Provider Identifier State_31],
-   Other_Provider_Identifier_Issuer_31 as [Other Provider Identifier Issuer_31],
-   Other_Provider_Identifier_32 as [Other Provider Identifier_32],
-   Other_Provider_Identifier_Type_Code_32 as [Other Provider Identifier Type Code_32],
-   Other_Provider_Identifier_State_32 as [Other Provider Identifier State_32],
-   Other_Provider_Identifier_Issuer_32 as [Other Provider Identifier Issuer_32],
-   Other_Provider_Identifier_33 as [Other Provider Identifier_33],
-   Other_Provider_Identifier_Type_Code_33 as [Other Provider Identifier Type Code_33],
-   Other_Provider_Identifier_State_33 as [Other Provider Identifier State_33],
-   Other_Provider_Identifier_Issuer_33 as [Other Provider Identifier Issuer_33],
-   Other_Provider_Identifier_34 as [Other Provider Identifier_34],
-   Other_Provider_Identifier_Type_Code_34 as [Other Provider Identifier Type Code_34],
-   Other_Provider_Identifier_State_34 as [Other Provider Identifier State_34],
-   Other_Provider_Identifier_Issuer_34 as [Other Provider Identifier Issuer_34],
-   Other_Provider_Identifier_35 as [Other Provider Identifier_35],
-   Other_Provider_Identifier_Type_Code_35 as [Other Provider Identifier Type Code_35],
-   Other_Provider_Identifier_State_35 as [Other Provider Identifier State_35],
-   Other_Provider_Identifier_Issuer_35 as [Other Provider Identifier Issuer_35],
-   Other_Provider_Identifier_36 as [Other Provider Identifier_36],
-   Other_Provider_Identifier_Type_Code_36 as [Other Provider Identifier Type Code_36],
-   Other_Provider_Identifier_State_36 as [Other Provider Identifier State_36],
-   Other_Provider_Identifier_Issuer_36 as [Other Provider Identifier Issuer_36],
-   Other_Provider_Identifier_37 as [Other Provider Identifier_37],
-   Other_Provider_Identifier_Type_Code_37 as [Other Provider Identifier Type Code_37],
-   Other_Provider_Identifier_State_37 as [Other Provider Identifier State_37],
-   Other_Provider_Identifier_Issuer_37 as [Other Provider Identifier Issuer_37],
-   Other_Provider_Identifier_38 as [Other Provider Identifier_38],
-   Other_Provider_Identifier_Type_Code_38 as [Other Provider Identifier Type Code_38],
-   Other_Provider_Identifier_State_38 as [Other Provider Identifier State_38],
-   Other_Provider_Identifier_Issuer_38 as [Other Provider Identifier Issuer_38],
-   Other_Provider_Identifier_39 as [Other Provider Identifier_39],
-   Other_Provider_Identifier_Type_Code_39 as [Other Provider Identifier Type Code_39],
-   Other_Provider_Identifier_State_39 as [Other Provider Identifier State_39],
-   Other_Provider_Identifier_Issuer_39 as [Other Provider Identifier Issuer_39],
-   Other_Provider_Identifier_40 as [Other Provider Identifier_40],
-   Other_Provider_Identifier_Type_Code_40 as [Other Provider Identifier Type Code_40],
-   Other_Provider_Identifier_State_40 as [Other Provider Identifier State_40],
-   Other_Provider_Identifier_Issuer_40 as [Other Provider Identifier Issuer_40],
-   Other_Provider_Identifier_41 as [Other Provider Identifier_41],
-   Other_Provider_Identifier_Type_Code_41 as [Other Provider Identifier Type Code_41],
-   Other_Provider_Identifier_State_41 as [Other Provider Identifier State_41],
-   Other_Provider_Identifier_Issuer_41 as [Other Provider Identifier Issuer_41],
-   Other_Provider_Identifier_42 as [Other Provider Identifier_42],
-   Other_Provider_Identifier_Type_Code_42 as [Other Provider Identifier Type Code_42],
-   Other_Provider_Identifier_State_42 as [Other Provider Identifier State_42],
-   Other_Provider_Identifier_Issuer_42 as [Other Provider Identifier Issuer_42],
-   Other_Provider_Identifier_43 as [Other Provider Identifier_43],
-   Other_Provider_Identifier_Type_Code_43 as [Other Provider Identifier Type Code_43],
-   Other_Provider_Identifier_State_43 as [Other Provider Identifier State_43],
-   Other_Provider_Identifier_Issuer_43 as [Other Provider Identifier Issuer_43],
-   Other_Provider_Identifier_44 as [Other Provider Identifier_44],
-   Other_Provider_Identifier_Type_Code_44 as [Other Provider Identifier Type Code_44],
-   Other_Provider_Identifier_State_44 as [Other Provider Identifier State_44],
-   Other_Provider_Identifier_Issuer_44 as [Other Provider Identifier Issuer_44],
-   Other_Provider_Identifier_45 as [Other Provider Identifier_45],
-   Other_Provider_Identifier_Type_Code_45 as [Other Provider Identifier Type Code_45],
-   Other_Provider_Identifier_State_45 as [Other Provider Identifier State_45],
-   Other_Provider_Identifier_Issuer_45 as [Other Provider Identifier Issuer_45],
-   Other_Provider_Identifier_46 as [Other Provider Identifier_46],
-   Other_Provider_Identifier_Type_Code_46 as [Other Provider Identifier Type Code_46],
-   Other_Provider_Identifier_State_46 as [Other Provider Identifier State_46],
-   Other_Provider_Identifier_Issuer_46 as [Other Provider Identifier Issuer_46],
-   Other_Provider_Identifier_47 as [Other Provider Identifier_47],
-   Other_Provider_Identifier_Type_Code_47 as [Other Provider Identifier Type Code_47],
-   Other_Provider_Identifier_State_47 as [Other Provider Identifier State_47],
-   Other_Provider_Identifier_Issuer_47 as [Other Provider Identifier Issuer_47],
-   Other_Provider_Identifier_48 as [Other Provider Identifier_48],
-   Other_Provider_Identifier_Type_Code_48 as [Other Provider Identifier Type Code_48],
-   Other_Provider_Identifier_State_48 as [Other Provider Identifier State_48],
-   Other_Provider_Identifier_Issuer_48 as [Other Provider Identifier Issuer_48],
-   Other_Provider_Identifier_49 as [Other Provider Identifier_49],
-   Other_Provider_Identifier_Type_Code_49 as [Other Provider Identifier Type Code_49],
-   Other_Provider_Identifier_State_49 as [Other Provider Identifier State_49],
-   Other_Provider_Identifier_Issuer_49 as [Other Provider Identifier Issuer_49],
-   Other_Provider_Identifier_50 as [Other Provider Identifier_50],
-   Other_Provider_Identifier_Type_Code_50 as [Other Provider Identifier Type Code_50],
-   Other_Provider_Identifier_State_50 as [Other Provider Identifier State_50],
-   Other_Provider_Identifier_Issuer_50 as [Other Provider Identifier Issuer_50],
-   Is_Sole_Proprietor as [Is Sole Proprietor],
-   Is_Organization_Subpart as [Is Organization Subpart],
-   Parent_Organization_LBN as [Parent Organization LBN],
-   Parent_Organization_TIN as [Parent Organization TIN],
-   Authorized_Official_Name_Prefix_Text as [Authorized Official Name Prefix Text],
-   Authorized_Official_Name_Suffix_Text as [Authorized Official Name Suffix Text],
-   Authorized_Official_Credential_Text as [Authorized Official Credential Text] from NPPES_flat);
-*/
-
+/* Holds identifiers for providers, for example, a state Medicaid identifier. */
 drop table if exists other_provider_identifiers;
     create table other_provider_identifiers (
     npi char(10),
@@ -973,6 +668,7 @@ drop table if exists other_provider_identifiers;
     Other_Provider_Identifier_Issuer VARCHAR(80),
     Other_Provider_Identifier_State VARCHAR(2));
 
+/* Identifiers are generated by denormalizing the NPPES_flat table */
 insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
     select npf.npi, 1, Other_Provider_Identifier_1,Other_Provider_Identifier_Type_Code_1,Other_Provider_Identifier_Issuer_1,Other_Provider_Identifier_State_1 from NPPES_flat npf
 where Other_Provider_Identifier_1 is not NULL or Other_Provider_Identifier_Type_Code_1 is not NULL or Other_Provider_Identifier_Issuer_1 is not NULL or Other_Provider_Identifier_State_1 is not NULL;
@@ -1174,7 +870,7 @@ insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifie
 where Other_Provider_Identifier_50 is not NULL or Other_Provider_Identifier_Type_Code_50 is not NULL or Other_Provider_Identifier_Issuer_50 is not NULL or Other_Provider_Identifier_State_50 is not NULL;
 
 
-
+/* provider_licenses table associates a health care provider taxonomy with a license number */
 drop table if exists provider_licenses;
 create table provider_licenses (
     npi char(10),
@@ -1245,7 +941,7 @@ insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code
 where Healthcare_Provider_Taxonomy_Code_15 is not NULL or Provider_License_Number_15 is not NULL or Provider_License_Number_State_Code_15 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_15 is not NULL;
 
 
-
+/* The header table is a slimmed down table from the original flat table */
 drop table if exists NPPES_header;
     create table NPPES_header (
     NPI CHAR(10),
@@ -1306,7 +1002,9 @@ drop table if exists NPPES_header;
 insert into NPPES_header (NPI,Entity_Type_Code,Replacement_NPI,Employer_Identification_Number_EIN,Provider_Organization_Name_Legal_Business_Name,Provider_Last_Name_Legal_Name,Provider_First_Name,Provider_Middle_Name,Provider_Name_Prefix_Text,Provider_Name_Suffix_Text,Provider_Credential_Text,Provider_Other_Organization_Name,Provider_Other_Organization_Name_Type_Code,Provider_Other_Last_Name,Provider_Other_First_Name,Provider_Other_Middle_Name,Provider_Other_Name_Prefix_Text,Provider_Other_Name_Suffix_Text,Provider_Other_Credential_Text,Provider_Other_Last_Name_Type_Code,Provider_First_Line_Business_Mailing_Address,Provider_Second_Line_Business_Mailing_Address,Provider_Business_Mailing_Address_City_Name,Provider_Business_Mailing_Address_State_Name,Provider_Business_Mailing_Address_Postal_Code,Provider_Business_Mailing_Address_Country_Cod,Provider_Business_Mailing_Address_Telephone_Number,Provider_Business_Mailing_Address_Fax_Number,Provider_First_Line_Business_Practice_Location_Address,Provider_Second_Line_Business_Practice_Location_Address,Provider_Business_Practice_Location_Address_City_Name,Provider_Business_Practice_Location_Address_State_Name,Provider_Business_Practice_Location_Address_Postal_Code,Provider_Business_Practice_Location_Address_Country_Cod,Provider_Business_Practice_Location_Address_Telephone_Number,Provider_Business_Practice_Location_Address_Fax_Number,Provider_Enumeration_Date,Last_Update_Date,NPI_Deactivation_Reason_Code,NPI_Deactivation_Date,NPI_Reactivation_Date,Provider_Gender_Code,Authorized_Official_Last_Name,Authorized_Official_First_Name,Authorized_Official_Middle_Name,Authorized_Official_Title_or_Position,Authorized_Official_Telephone_Number,Is_Sole_Proprietor,Is_Organization_Subpart,Parent_Organization_LBN,Parent_Organization_TIN,Authorized_Official_Name_Prefix_Text,Authorized_Official_Name_Suffix_Text,Authorized_Official_Credential_Text)
     select NPI,Entity_Type_Code,Replacement_NPI,Employer_Identification_Number_EIN,Provider_Organization_Name_Legal_Business_Name,Provider_Last_Name_Legal_Name,Provider_First_Name,Provider_Middle_Name,Provider_Name_Prefix_Text,Provider_Name_Suffix_Text,Provider_Credential_Text,Provider_Other_Organization_Name,Provider_Other_Organization_Name_Type_Code,Provider_Other_Last_Name,Provider_Other_First_Name,Provider_Other_Middle_Name,Provider_Other_Name_Prefix_Text,Provider_Other_Name_Suffix_Text,Provider_Other_Credential_Text,Provider_Other_Last_Name_Type_Code,Provider_First_Line_Business_Mailing_Address,Provider_Second_Line_Business_Mailing_Address,Provider_Business_Mailing_Address_City_Name,Provider_Business_Mailing_Address_State_Name,Provider_Business_Mailing_Address_Postal_Code,Provider_Business_Mailing_Address_Country_Cod,Provider_Business_Mailing_Address_Telephone_Number,Provider_Business_Mailing_Address_Fax_Number,Provider_First_Line_Business_Practice_Location_Address,Provider_Second_Line_Business_Practice_Location_Address,Provider_Business_Practice_Location_Address_City_Name,Provider_Business_Practice_Location_Address_State_Name,Provider_Business_Practice_Location_Address_Postal_Code,Provider_Business_Practice_Location_Address_Country_Cod,Provider_Business_Practice_Location_Address_Telephone_Number,Provider_Business_Practice_Location_Address_Fax_Number,Provider_Enumeration_Date,Last_Update_Date,NPI_Deactivation_Reason_Code,NPI_Deactivation_Date,NPI_Reactivation_Date,Provider_Gender_Code,Authorized_Official_Last_Name,Authorized_Official_First_Name,Authorized_Official_Middle_Name,Authorized_Official_Title_or_Position,Authorized_Official_Telephone_Number,Is_Sole_Proprietor,Is_Organization_Subpart,Parent_Organization_LBN,Parent_Organization_TIN,Authorized_Official_Name_Prefix_Text,Authorized_Official_Name_Suffix_Text,Authorized_Official_Credential_Text from NPPES_flat;
 
-drop table if exists healthcare_provider_taxonomy_processed;
+
+/* The health care provider taxonomy stores the NUCC taxonomies */
+drop table if exists healthcare_provider_taxonomies;
 create table healthcare_provider_taxonomies (
     taxonomy_code char(10) not null,
     provider_type varchar(255),
@@ -1314,14 +1012,15 @@ create table healthcare_provider_taxonomies (
     specialization varchar(1024),
     definition text,
     notes text);
-        
+
+/* Load in the NUCC Taxonomy file */
 LOAD DATA INFILE 'C:/temp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provider_taxonomies
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\r\n'
       IGNORE 1 LINES
 ;
 
-
+/* Holds the provider processed taxonomies */
 drop table if exists healthcare_provider_taxonomy_processed;
     create table  healthcare_provider_taxonomy_processed
         (npi char(11),
@@ -1329,7 +1028,7 @@ drop table if exists healthcare_provider_taxonomy_processed;
          flattened_taxonomy_string varchar(200)
     );
     
-
+/* Add binary variables */
 alter table healthcare_provider_taxonomy_processed add is_advanced_practice_midwife boolean;
 
 alter table healthcare_provider_taxonomy_processed add is_allergy_and_immunology boolean;
@@ -1614,6 +1313,7 @@ alter table healthcare_provider_taxonomy_processed add is_vascular_and_intervent
 
 alter table healthcare_provider_taxonomy_processed add is_vascular_surgery boolean;
 
+/* Start creating the flat taxonomy string */
 
 insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 1, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|') as taxonomy_string
@@ -1689,7 +1389,7 @@ insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxono
  select nf.npi, 15, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|','|', Healthcare_Provider_Taxonomy_Code_5, '|','|', Healthcare_Provider_Taxonomy_Code_6, '|','|', Healthcare_Provider_Taxonomy_Code_7, '|','|', Healthcare_Provider_Taxonomy_Code_8, '|','|', Healthcare_Provider_Taxonomy_Code_9, '|','|', Healthcare_Provider_Taxonomy_Code_10, '|','|', Healthcare_Provider_Taxonomy_Code_11, '|','|', Healthcare_Provider_Taxonomy_Code_12, '|','|', Healthcare_Provider_Taxonomy_Code_13, '|','|', Healthcare_Provider_Taxonomy_Code_14, '|','|', Healthcare_Provider_Taxonomy_Code_15, '|') as taxonomy_string
 from nppes_flat nf where  Healthcare_Provider_Taxonomy_Code_1 is not null and Healthcare_Provider_Taxonomy_Code_2 is not null and Healthcare_Provider_Taxonomy_Code_3 is not null and Healthcare_Provider_Taxonomy_Code_4 is not null and Healthcare_Provider_Taxonomy_Code_5 is not null and Healthcare_Provider_Taxonomy_Code_6 is not null and Healthcare_Provider_Taxonomy_Code_7 is not null and Healthcare_Provider_Taxonomy_Code_8 is not null and Healthcare_Provider_Taxonomy_Code_9 is not null and Healthcare_Provider_Taxonomy_Code_10 is not null and Healthcare_Provider_Taxonomy_Code_11 is not null and Healthcare_Provider_Taxonomy_Code_12 is not null and Healthcare_Provider_Taxonomy_Code_13 is not null and Healthcare_Provider_Taxonomy_Code_14 is not null and Healthcare_Provider_Taxonomy_Code_15 is not null;
 
-
+/* Update the provider taxonomies */
 update healthcare_provider_taxonomy_processed set is_advanced_practice_midwife = case when  flattened_taxonomy_string like '%367A00000X%' then 1 else 0 end;
 
 update healthcare_provider_taxonomy_processed set is_allergy_and_immunology = case when  flattened_taxonomy_string like '%207K00000X%' or flattened_taxonomy_string like '%207KA0200X%' or flattened_taxonomy_string like '%207KI0005X%' then 1 else 0 end;
@@ -1974,9 +1674,8 @@ update healthcare_provider_taxonomy_processed set is_vascular_and_interventional
 
 update healthcare_provider_taxonomy_processed set is_vascular_surgery = case when  flattened_taxonomy_string like '%2086S0129X%' then 1 else 0 end;
 
-
-
- drop table if exists nppes_contact;
+/* This holds the contact information for the provider */
+drop table if exists nppes_contact;
 create table nppes_contact (
  id  integer auto_increment primary key,
  address_type varchar(15),
@@ -1991,11 +1690,13 @@ create table nppes_contact (
  address_formatted varchar(1023),
  phone varchar(20),
  fax varchar(20),
- address_hash varchar(1024),
+ address_hash varchar(64),
  zip5 varchar(5),
- zip4 varchar(4)
+ zip4 varchar(4),
+ geocode_method varchar(64)
 );
 
+/* Insert the business addresses into the contact table */
 insert into nppes_contact (address_type, npi, first_line, second_line, city, state, postal_code, country_code, phone, fax)
   select 'business',nh.npi, nh.Provider_First_Line_Business_Mailing_Address, nh.Provider_Second_Line_Business_Mailing_Address, nh.Provider_Business_Mailing_Address_City_Name,
     nh.Provider_Business_Mailing_Address_State_Name, nh.Provider_Business_Mailing_Address_Postal_Code,
@@ -2004,16 +1705,18 @@ insert into nppes_contact (address_type, npi, first_line, second_line, city, sta
     from nppes_header nh
     ;
 
+/* Insert the practice address into the contact table */
 insert into nppes_contact (address_type, npi, first_line, second_line, city, state, postal_code, country_code, phone, fax)
   select 'practice', nh.NPI, nh.Provider_First_Line_Business_Practice_Location_Address, nh.Provider_Second_Line_Business_Practice_Location_Address, nh.Provider_Business_Practice_Location_Address_City_Name,
     nh.Provider_Business_Practice_Location_Address_State_Name, nh.Provider_Business_Practice_Location_Address_Postal_Code,
     nh.Provider_Business_Practice_Location_Address_Country_Cod, nh.Provider_Business_Practice_Location_Address_Fax_Number,
     nh.Provider_Business_Practice_Location_Address_Telephone_Number from nppes_header nh;
 
-
+/* Remove blank contacts */
 delete from nppes_contact where first_line is null and second_line is null and city is null and postal_code is null
   and country_code is null and phone is null and fax is null;
 
+/* Populate a flattened address field which will be used for hashing */
 update nppes_contact set address_flattened =
   concat(case when first_line is not null then concat('|',first_line,'|') else '||' end,
          case when second_line is not null then concat('|', second_line,'|') else '||' end,
@@ -2021,14 +1724,18 @@ update nppes_contact set address_flattened =
          case when postal_code is not null then concat('|', postal_code,'|') else '||' end,
          case when country_code is not null then concat('|', country_code, '|') else '||' end);
 
- update nppes_contact set address_hash = password(address_flattened);
+update nppes_contact set address_hash = password(address_flattened);
 
- create table temp_max_id_address (max_id integer, counter integer, address_hash varchar(1023));
+/* Temp table for addresses */
+drop table if exists temp_max_id_address;
 
- insert into temp_max_id_address (max_id, counter, address_hash)
+create table temp_max_id_address (max_id integer, counter integer, address_hash varchar(1023));
+
+insert into temp_max_id_address (max_id, counter, address_hash)
   select max(id),count(*),address_hash from nppes_contact group by address_hash order by count(*) desc;
 
-
+/* Holds the normalized addresses */
+drop table if exists address;
 create table address
   (id integer primary key auto_increment,
     first_line varchar(55),
@@ -2039,13 +1746,15 @@ create table address
     country_code varchar(2),
     address_flattened varchar(1023),
     address_formatted varchar(1023),
-    address_hash varchar(1023),
+    address_hash varchar(64),
     zip5 varchar(5),
     zip4 varchar(4),
     latitude float,
-    longitude float
+    longitude float,
+    geocode_method varchar(64)
     );
 
+/* Populate the address table */
 insert address (first_line, second_line, city, state, postal_code, country_code, address_flattened, address_formatted, address_hash)
   select nc.first_line, nc.second_line, nc.city, nc.state, nc.postal_code, nc.country_code,
     nc.address_flattened, nc.address_formatted, nc.address_hash from nppes_contact nc
@@ -2061,6 +1770,27 @@ alter table nppes_contact drop column address_flattened;
 
 update address set zip5 = left(postal_code, 5), zip4 = substring(postal_code, 6, 4);
 
+/* Add indices to the tables */
+
+create unique index pk_npi_hct_proc on healthcare_provider_taxonomy_processed(npi);
+create index idx_oth_prov_id_npi on other_provider_identifiers(npi);
+create index idx_provider_licenses on provider_licenses(npi);
+/*alter table address modify address_hash varchar(64);
+alter table nppes_contact modify address_hash varchar(64);*/
+create index idx_address_addr_hash on address(address_hash);
+
+create index idx_nppes_contact_hash on nppes_contact(address_hash);
+create index idx_addr_zip4 on address(zip4);
+create index idx_addr_zip5 on address(zip5);
+create index idx_addr_city on address(city);
+create index idx_addr_state on address(state);
+create index idx_addr_latitude on address(latitude);
+create index idx_addr_longitude on address(longitude);
+create index idx_addr_geocdm on address(geocode_method);
+create unique index idx_npi_npi_header on nppes_header(npi);
+
+
+
 create table npi_summary_detailed as
  select fp.*,
    concat(pt1.provider_type,
@@ -2074,7 +1804,7 @@ create table npi_summary_detailed as
     a.latitude,
     a.longitude,
     a.geocode_method,
-    hptp.depth as taxonomy_depth, hptp.flattened_taxonomy_string, hptp.is_advanced_practice_midwife, hptp.is_allergy_and_immunology, hptp.is_ambulance, hptp.is_anesthesiologist_assistant, hptp.is_anesthesiology, hptp.is_assistant_podiatric, hptp.is_assisted_living_facility, hptp.is_behavioral_analyst, hptp.is_chiropractor, hptp.is_christian_science_sanitorium, hptp.is_clinic_center, hptp.is_clinical_nurse_specialist, hptp.is_clinical_pharmacology, hptp.is_colon_and_rectal_surgery, hptp.is_counselor, hptp.is_dentist, hptp.is_denturist, hptp.is_dermatology, hptp.is_durable_medical_equipment__medical_supplies, hptp.is_electrodiagnostic_medicine, hptp.is_emergency_medicine, hptp.is_family_medicine, hptp.is_general_acute_care_hospital, hptp.is_general_practice, hptp.is_genetic_counselor_ms, hptp.is_hospitalist, hptp.is_internal_medicine, hptp.is_legal_medicine, hptp.is_marriage_and_family_therapist, hptp.is_massage_therapist, hptp.is_medical_genetics, hptp.is_medical_genetics_phd_medical_genetics, hptp.is_military_hospital, hptp.is_multispecialty, hptp.is_neurological_surgery, hptp.is_neuromusculoskeletal_medicine_and_omm, hptp.is_nuclear_medicine, hptp.is_nurse_anesthetist_certified_registered, hptp.is_nurse_practitioner, hptp.is_obstetrics_and_gynecology, hptp.is_ophthalmology, hptp.is_optometrist, hptp.is_orthopaedic_surgery, hptp.is_otolaryngology, hptp.is_pain_medicine, hptp.is_pathology, hptp.is_pediatrics, hptp.is_pharmacist, hptp.is_pharmacy, hptp.is_pharmacy_technician, hptp.is_physical_medicine_and_rehabilitation, hptp.is_physical_therapist, hptp.is_physician_assistant, hptp.is_plastic_surgery, hptp.is_podiatrist, hptp.is_preventive_medicine, hptp.is_psychiatric_hospital, hptp.is_psychiatric_unit, hptp.is_psychiatry_and_neurology, hptp.is_psychoanalyst, hptp.is_psychologist, hptp.is_radiology, hptp.is_registered_nurse, hptp.is_rehabilitation_hospital, hptp.is_religious_nonmedical_health_care_institution, hptp.is_single_specialty, hptp.is_social_worker, hptp.is_special_hospital, hptp.is_surgery, hptp.is_thoracic_surgery_cardiothoracic_vascular_surgery, hptp.is_transplant_surgery, hptp.is_urology, hptp.is_behavioral_health_and_social_service_providers, hptp.is_hospital, hptp.is_laboratory, hptp.is_managed_care_organization, hptp.is_nursing_care_facility, hptp.is_residential_treatment_facility, hptp.is_student, hptp.is_supplier, hptp.is_physician, hptp.is_addiction_medicine, hptp.is_bariatric_medicine, hptp.is_body_imaging, hptp.is_cardiovascular_disease, hptp.is_clinical_and_laboratory_immunology, hptp.is_clinical_biochemical_genetics, hptp.is_clinical_cardiac_electrophysiology, hptp.is_clinical_cytogenetic, hptp.is_clinical_genetics_md, hptp.is_clinical_molecular_genetics, hptp.is_critical_care_medicine, hptp.is_dermatopathology, hptp.is_diagnostic_neuroimaging, hptp.is_diagnostic_radiology, hptp.is_diagnostic_ultrasound, hptp.is_endocrinology_diabetes_and_metabolism, hptp.is_endodontics, hptp.is_gastroenterology, hptp.is_geriatric_medicine, hptp.is_hematology, hptp.is_hematology_and_oncology, hptp.is_hepatology, hptp.is_hospice_and_palliative_medicine, hptp.is_hypertension_specialist, hptp.is_infectious_disease, hptp.is_interventional_cardiology, hptp.is_interventional_pain_medicine, hptp.is_mohsmicrographic_surgery, hptp.is_magnetic_resonance_imaging_mri, hptp.is_medical_oncology, hptp.is_molecular_genetic_pathology, hptp.is_nephrology, hptp.is_neurology, hptp.is_neuroradiology, hptp.is_nuclear_radiology, hptp.is_oral_and_maxillofacial_pathology, hptp.is_oral_and_maxillofacial_radiology, hptp.is_oral_and_maxillofacial_surgery, hptp.is_orthodontics_and_dentofacial_orthopedics, hptp.is_pediatric_dentistry, hptp.is_pediatric_radiology, hptp.is_pediatric_surgery, hptp.is_periodontics, hptp.is_phd_medical_genetics, hptp.is_plastic_and_reconstructive_surgery, hptp.is_prosthodontics, hptp.is_psychiatry, hptp.is_pulmonary_disease, hptp.is_radiation_oncology, hptp.is_radiological_physics, hptp.is_rheumatology, hptp.is_sleep_medicine, hptp.is_sports_medicine, hptp.is_surgery_of_the_hand, hptp.is_surgical_critical_care, hptp.is_surgical_oncology, hptp.is_therapeutic_radiology, hptp.is_transplant_hepatology, hptp.is_trauma_surgery, hptp.is_vascular_and_interventional_radiology, hptp.is_vascular_surgery
+    hptp.depth as taxonomy_depth, hptp.flattened_taxonomy_string, hptp.is_advanced_practice_midwife, hptp.is_allergy_and_immunology, hptp.is_ambulance, hptp.is_anesthesiologist_assistant, hptp.is_anesthesiology, hptp.is_assistant_podiatric, hptp.is_assisted_living_facility, hptp.is_behavioral_analyst, hptp.is_chiropractor, hptp.is_christian_science_sanitorium, hptp.is_clinic_center, hptp.is_clinical_nurse_specialist, hptp.is_clinical_pharmacology, hptp.is_colon_and_rectal_surgery, hptp.is_counselor, hptp.is_dentist, hptp.is_denturist, hptp.is_dermatology, hptp.is_durable_medical_equipment_medical_supplies, hptp.is_electrodiagnostic_medicine, hptp.is_emergency_medicine, hptp.is_family_medicine, hptp.is_general_acute_care_hospital, hptp.is_general_practice, hptp.is_genetic_counselor_ms, hptp.is_hospitalist, hptp.is_internal_medicine, hptp.is_legal_medicine, hptp.is_marriage_and_family_therapist, hptp.is_massage_therapist, hptp.is_medical_genetics, hptp.is_medical_genetics_phd_medical_genetics, hptp.is_military_hospital, hptp.is_multispecialty, hptp.is_neurological_surgery, hptp.is_neuromusculoskeletal_medicine_and_omm, hptp.is_nuclear_medicine, hptp.is_nurse_anesthetist_certified_registered, hptp.is_nurse_practitioner, hptp.is_obstetrics_and_gynecology, hptp.is_ophthalmology, hptp.is_optometrist, hptp.is_orthopaedic_surgery, hptp.is_otolaryngology, hptp.is_pain_medicine, hptp.is_pathology, hptp.is_pediatrics, hptp.is_pharmacist, hptp.is_pharmacy, hptp.is_pharmacy_technician, hptp.is_physical_medicine_and_rehabilitation, hptp.is_physical_therapist, hptp.is_physician_assistant, hptp.is_plastic_surgery, hptp.is_podiatrist, hptp.is_preventive_medicine, hptp.is_psychiatric_hospital, hptp.is_psychiatric_unit, hptp.is_psychiatry_and_neurology, hptp.is_psychoanalyst, hptp.is_psychologist, hptp.is_radiology, hptp.is_registered_nurse, hptp.is_rehabilitation_hospital, hptp.is_religious_nonmedical_health_care_institution, hptp.is_single_specialty, hptp.is_social_worker, hptp.is_special_hospital, hptp.is_surgery, hptp.is_thoracic_surgery_cardiothoracic_vascular_surgery, hptp.is_transplant_surgery, hptp.is_urology, hptp.is_behavioral_health_and_social_service_providers, hptp.is_hospital, hptp.is_laboratory, hptp.is_managed_care_organization, hptp.is_nursing_care_facility, hptp.is_residential_treatment_facility, hptp.is_student, hptp.is_supplier, hptp.is_physician, hptp.is_addiction_medicine, hptp.is_bariatric_medicine, hptp.is_body_imaging, hptp.is_cardiovascular_disease, hptp.is_clinical_and_laboratory_immunology, hptp.is_clinical_biochemical_genetics, hptp.is_clinical_cardiac_electrophysiology, hptp.is_clinical_cytogenetic, hptp.is_clinical_genetics_md, hptp.is_clinical_molecular_genetics, hptp.is_critical_care_medicine, hptp.is_dermatopathology, hptp.is_diagnostic_neuroimaging, hptp.is_diagnostic_radiology, hptp.is_diagnostic_ultrasound, hptp.is_endocrinology_diabetes_and_metabolism, hptp.is_endodontics, hptp.is_gastroenterology, hptp.is_geriatric_medicine, hptp.is_hematology, hptp.is_hematology_and_oncology, hptp.is_hepatology, hptp.is_hospice_and_palliative_medicine, hptp.is_hypertension_specialist, hptp.is_infectious_disease, hptp.is_interventional_cardiology, hptp.is_interventional_pain_medicine, hptp.is_mohsmicrographic_surgery, hptp.is_magnetic_resonance_imaging_mri, hptp.is_medical_oncology, hptp.is_molecular_genetic_pathology, hptp.is_nephrology, hptp.is_neurology, hptp.is_neuroradiology, hptp.is_nuclear_radiology, hptp.is_oral_and_maxillofacial_pathology, hptp.is_oral_and_maxillofacial_radiology, hptp.is_oral_and_maxillofacial_surgery, hptp.is_orthodontics_and_dentofacial_orthopedics, hptp.is_pediatric_dentistry, hptp.is_pediatric_radiology, hptp.is_pediatric_surgery, hptp.is_periodontics, hptp.is_phd_medical_genetics, hptp.is_plastic_and_reconstructive_surgery, hptp.is_prosthodontics, hptp.is_psychiatry, hptp.is_pulmonary_disease, hptp.is_radiation_oncology, hptp.is_radiological_physics, hptp.is_rheumatology, hptp.is_sleep_medicine, hptp.is_sports_medicine, hptp.is_surgery_of_the_hand, hptp.is_surgical_critical_care, hptp.is_surgical_oncology, hptp.is_therapeutic_radiology, hptp.is_transplant_hepatology, hptp.is_trauma_surgery, hptp.is_vascular_and_interventional_radiology, hptp.is_vascular_surgery
   from
   (
     select nh1.npi as npi,nh1.Provider_Business_Practice_Location_Address_State_Name as state,
@@ -2087,13 +1817,13 @@ create table npi_summary_detailed as
             if(nh1.provider_credential_text is null,'',replace(nh1.Provider_Credential_Text,'.','')))
       end as provider_name,pl1.sequence_id,
       pl1.Healthcare_Provider_Taxonomy_Code as taxonomy_code
-     from nppes.nppes_header nh1
-      left outer join nppes.provider_licenses pl1 on pl1.npi = nh1.NPI
+     from nppes_header nh1
+      left outer join provider_licenses pl1 on pl1.npi = nh1.NPI
       ) fp
-     left outer join nppes.healthcare_provider_taxonomies pt1 on pt1.taxonomy_code = fp.taxonomy_code
-     left outer join nppes.healthcare_provider_taxonomy_processed hptp on hptp.npi = fp.npi
-     join nppes.nppes_contact nc on nc.npi = fp.npi and nc.address_type = 'practice'
-     join nppes.address a on a.address_hash = nc.address_hash;
+     left outer join healthcare_provider_taxonomies pt1 on pt1.taxonomy_code = fp.taxonomy_code
+     left outer join healthcare_provider_taxonomy_processed hptp on hptp.npi = fp.npi
+     join nppes_contact nc on nc.npi = fp.npi and nc.address_type = 'practice'
+     join address a on a.address_hash = nc.address_hash;
 
 
   create index idx_npi_summary on npi_summary_detailed (npi);
@@ -2153,21 +1883,4 @@ AS
           is_nuclear_radiology,
           is_hematology_and_oncology
      FROM nppes.npi_summary_detailed_primary_taxonomy nsdpt;
-
-    
-
-/* Add indices to the tables */
-
-create unique index pk_npi_hct_proc on healthcare_provider_taxonomy_processed(npi);
-create index idx_oth_prov_id_npi on other_provider_identifiers(npi);
-create index idx_provider_licenses on provider_licenses(npi);
-create index idx_address_addr_hash on address(address_hash);
-create index idx_nppes_contact_hash on nppes_contact(address_hash);
-create index idx_addr_zip4 on address(zip4);
-create index idx_addr_zip5 on address(zip5);
-create index idx_addr_city on address(city);
-create index idx_addr_state on address(state);
-create index idx_addr_latitude on address(latitude);
-create index idx_addr_longitude on address(longitude);
-create index idx_addr_geocdm on address(geocode_method);
 

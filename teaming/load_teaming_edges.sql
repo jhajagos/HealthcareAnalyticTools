@@ -2,15 +2,18 @@
 
 use teaming;
 
+/* Create table for the current teaming data */
+
+drop table if exists teaming_graph_providers_2012_2013;
 create table teaming_graph_providers_2012_2013
     (npi_from char(10),
      npi_to char(10),
      shared_transaction_count integer,
      patient_total integer,
      same_day_total integer);
-     
-     
-     
+
+/* C:\\[optional user directory]\CMS_teaming\data\physician-referrals-2012-2013-days30\Physician-Referrals-2012-2013-days30.txt */
+
 LOAD DATA INFILE 'C:\\temp\\teaming_latest_30_day.csv' INTO TABLE teaming_graph_providers_2012_2013
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\n'

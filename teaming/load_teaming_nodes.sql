@@ -1895,6 +1895,7 @@ create table npi_summary_detailed_primary_taxonomy as
 
 create unique index pk_nsdpt_npi on npi_summary_detailed_primary_taxonomy(npi);
 
+drop view if exists npi_summary_abridged_primary_taxonomy;
 CREATE VIEW npi_summary_abridged_primary_taxonomy
 AS
    SELECT npi,

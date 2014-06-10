@@ -1788,10 +1788,12 @@ create index idx_addr_latitude on address(latitude);
 create index idx_addr_longitude on address(longitude);
 create index idx_addr_geocdm on address(geocode_method);
 create unique index idx_npi_npi_header on nppes_header(npi);
+create index idx_nppes_contact_npi on nppes_contact(npi);
+create index idx_nppes_contact_address_type on nppes_contact(address_type);
 
 
-drop table if exists npi_summary_detailed1 as
-create table npi_summary_detailed as
+drop table if exists npi_summary_detailed1;
+create table npi_summary_detailed1 as
       select nh1.npi as npi,nh1.Provider_Business_Practice_Location_Address_State_Name as state,
         nh1.Provider_Business_Practice_Location_Address_Postal_Code as zip, nh1.Provider_Business_Practice_Location_Address_City_Name as city,
         nh1.Is_Sole_Proprietor as sole_provider,nh1.Provider_Gender_Code as gender_code,
@@ -1800,36 +1802,41 @@ create table npi_summary_detailed as
           when nh1.Provider_Organization_Name_Legal_Business_Name is not null then nh1.Provider_Organization_Name_Legal_Business_Name
             else concat(rtrim(nh1.Provider_Last_Name_Legal_Name),', ',rtrim(nh1.Provider_First_Name),' ',
               if(nh1.provider_credential_text is null,'',replace(nh1.Provider_Credential_Text,'.','')))
-        end as provider_name,pl1.sequence_id,
-        pl1.Healthcare_Provider_Taxonomy_Code as taxonomy_code
-       from nppes_header nh1
-        left outer join provider_licenses pl1 on pl1.npi = nh1.NPI;
+        end as provider_name
+       from nppes_header nh1;
 
 create unique index idx_nsd1_npi on npi_summary_detailed1(npi);
 
 drop table if exists npi_summary_detailed;
 create table npi_summary_detailed as
-  select *,
+  select nsd1.*,
     a.address_flattened,
     a.zip5,
     a.zip4,
     a.latitude,
     a.longitude,
-    a.geocode_method from npi_summary_detailed1 nsd1
+    a.geocode_method,
+    a.address_hash,
+    left(nc.phone, 3) as practice_area_code
+    from npi_summary_detailed1 nsd1
     join nppes_contact nc on nsd1.npi = nc.npi
-      and and nc.address_type = 'practice';
+    join address a on a.address_hash = nc.address_hash
+       and nc.address_type = 'practice';
 
+create unique index idx_nsd2_npi on npi_summary_detailed(npi);
 
-create unique index idx_nsd2_npi on npi_summary_detailed2(npi);
-
-drop table if exists npi_summary_detailed_taxonomy1
+drop table if exists npi_summary_detailed_taxonomy1;
 create table npi_summary_detailed_taxonomy1 as
-   select fp.*,
+   select hptp.npi as npi1,
      concat(pt1.provider_type,
       if(pt1.classification = '','',concat(' - ', pt1.classification)),
       if(pt1.specialization = '','',concat(' - ', pt1.specialization))) as taxonomy_name,
       pt1.classification,
       pt1.specialization,
+      pt1.provider_type,
+      pt1.taxonomy_code,
+      pl.sequence_id,
+      pl.Healthcare_Provider_Primary_Taxonomy_Switch as switch,
       hptp.depth as taxonomy_depth, hptp.flattened_taxonomy_string, hptp.is_advanced_practice_midwife, hptp.is_allergy_and_immunology,
       hptp.is_ambulance, hptp.is_anesthesiologist_assistant, hptp.is_anesthesiology, hptp.is_assistant_podiatric, hptp.is_assisted_living_facility,
       hptp.is_behavioral_analyst, hptp.is_chiropractor, hptp.is_christian_science_sanitorium, hptp.is_clinic_center,
@@ -1864,25 +1871,25 @@ create table npi_summary_detailed_taxonomy1 as
       hptp.is_radiological_physics, hptp.is_rheumatology, hptp.is_sleep_medicine, hptp.is_sports_medicine, hptp.is_surgery_of_the_hand,
       hptp.is_surgical_critical_care, hptp.is_surgical_oncology, hptp.is_therapeutic_radiology, hptp.is_transplant_hepatology,
       hptp.is_trauma_surgery, hptp.is_vascular_and_interventional_radiology, hptp.is_vascular_surgery
-      from  healthcare_provider_taxonomy_processed hptp on hptp.npi = fp.npi
-   left outer join healthcare_provider_taxonomies pt1 on pt1.taxonomy_code = fp.taxonomy_code;
+      from provider_licenses pl join healthcare_provider_taxonomy_processed hptp on hptp.npi = pl.npi
+    left outer join healthcare_provider_taxonomies pt1 on pt1.taxonomy_code = pl.Healthcare_Provider_Taxonomy_Code;
 
-create index idx_nsd2_npi npi_summary_detailed_taxonomy1(npi);
+create index idx_nsd2_npi on npi_summary_detailed_taxonomy1(npi1);
 
-drop table if exists npi_summary_detailed;
-create table npi_summary_detailed as
-  select nsdt2.*, nsdt1.* from npi_summary_detailed2 nsd2
-    join npi_summary_detailed_taxonomy1 nsdt1 on nsd2.npi =
-    nsd1.npi;
+drop table if exists npi_summary_detailed_taxonomy;
+create table npi_summary_detailed_taxonomy as
+  select nsd.*, nsdt1.* from npi_summary_detailed nsd
+    join npi_summary_detailed_taxonomy1 nsdt1 on nsd.npi =
+    nsdt1.npi1;
 
-alter table npi_summary_detailed drop npi1;
-create index idx_npi_summary on npi_summary_detailed (npi);
-create index idx_sequence_id_summary on npi_summary_detailed(sequence_id);
+alter table npi_summary_detailed_taxonomy drop npi1;
+create index idx_nsdt_npi on npi_summary_detailed_taxonomy(npi);
+create index idx_sequence_id_summary on npi_summary_detailed_taxonomy(sequence_id);
 
 drop table if exists npi_summary_detailed_primary_taxonomy;
 create table npi_summary_detailed_primary_taxonomy as
     select * from
-  npi_summary_detailed where sequence_id = 1
+  npi_summary_detailed_taxonomy where sequence_id = 1
   order by state, zip5, npi
   ;
 

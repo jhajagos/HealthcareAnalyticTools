@@ -14,16 +14,26 @@ import networkx as nx
 import pprint
 import sys
 import csv
+import json
 
-REFERRAL_TABLE_NAME = "teaming.teaming_graph_providers_2012_2013"
-NPI_DETAIL_TABLE_NAME = " nppes.npi_summary_abridged_primary_taxonomy"
-FIELD_NAME_FROM_RELATIONSHIP = "npi_from"
-FIELD_NAME_TO_RELATIONSHIP = "npi_to"
-FIELD_NAME_WEIGHT = "patient_total"
+
+def load_configuration(file_name="config.json.example"):
+    with open(file_name, "r") as f:
+        configuration = json.load(f)
+        return configuration
+
+config = load_configuration()
+
+REFERRAL_TABLE_NAME = config["REFERRAL_TABLE_NAME"]
+NPI_DETAIL_TABLE_NAME = config["NPI_DETAIL_TABLE_NAME"]
+FIELD_NAME_FROM_RELATIONSHIP = config["FIELD_NAME_FROM_RELATIONSHIP"]
+FIELD_NAME_TO_RELATIONSHIP = config["FIELD_NAME_TO_RELATIONSHIP"]
+FIELD_NAME_WEIGHT = config["FIELD_NAME_WEIGHT"]
 
 
 def logger(string_to_write=""):
     print(string_to_write)
+
 
 
 def get_new_cursor(dsn_name="teaming"):

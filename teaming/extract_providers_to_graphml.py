@@ -15,14 +15,17 @@ import pprint
 import sys
 import csv
 import json
-
+import os
 
 def load_configuration(file_name="config.json.example"):
     with open(file_name, "r") as f:
         configuration = json.load(f)
         return configuration
 
-config = load_configuration()
+if os.path.exists("config.json"):
+    config = load_configuration("config.json")
+else:
+    config = load_configuration()
 
 REFERRAL_TABLE_NAME = config["REFERRAL_TABLE_NAME"]
 NPI_DETAIL_TABLE_NAME = config["NPI_DETAIL_TABLE_NAME"]

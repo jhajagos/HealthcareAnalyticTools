@@ -12,12 +12,13 @@
  Code is part of https://github.com/jhajagos/HealthcareAnalyticTools
 
 */
+
 use teaming;
 
 /* Create the flat table to import the CSV file into */
 
-    drop table if exists NPPES_flat;
-    create table NPPES_flat (
+ drop table if exists Load_NPPES_flat;
+    create table Load_NPPES_flat (
         NPI CHAR(10),
     Entity_Type_Code CHAR(1),
     Replacement_NPI CHAR(10),
@@ -336,7 +337,7 @@ use teaming;
 
 
 /* Load CSV file into the flat table */
-LOAD DATA INFILE 'C:/temp/npidata_20050523-20140309.csv' INTO TABLE NPPES_flat
+LOAD DATA LOCAL INFILE '/tmp/npidata_20050523-20140608.csv' INTO TABLE Load_NPPES_flat
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\n'
       IGNORE 1 LINES
@@ -655,8 +656,11 @@ Parent_Organization_LBN = case @Parent_Organization_LBN when '' then NULL else @
 Parent_Organization_TIN = case @Parent_Organization_TIN when '' then NULL else @Parent_Organization_TIN end,
 Authorized_Official_Name_Prefix_Text = case @Authorized_Official_Name_Prefix_Text when '' then NULL else @Authorized_Official_Name_Prefix_Text end,
 Authorized_Official_Name_Suffix_Text = case @Authorized_Official_Name_Suffix_Text when '' then NULL else @Authorized_Official_Name_Suffix_Text end,
-Authorized_Official_Credential_Text = case @Authorized_Official_Credential_Text when '' then NULL else @Authorized_Official_Credential_Text end
-;
+Authorized_Official_Credential_Text = case @Authorized_Official_Credential_Text when '' then NULL else @Authorized_Official_Credential_Text end;
+
+drop table if exists NPPES_flat;
+create table NPPES_Flat as
+  select * from Load_NPPES_Flat where Provider_Business_Practice_Location_Address_State_Name = 'MA';
 
 /* Holds identifiers for providers, for example, a state Medicaid identifier. */
 drop table if exists other_provider_identifiers;
@@ -1014,7 +1018,7 @@ create table healthcare_provider_taxonomies (
     notes text);
 
 /* Load in the NUCC Taxonomy file */
-LOAD DATA INFILE 'C:/temp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provider_taxonomies
+LOAD DATA LOCAL INFILE '/tmp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provider_taxonomies
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\r\n'
       IGNORE 1 LINES

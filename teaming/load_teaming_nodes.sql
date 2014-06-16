@@ -13,6 +13,15 @@
 
 */
 
+/*
+
+If you are doing a fresh load of the database you want to
+
+drop table if exists NPPES_flat;
+create database teaming;
+
+*/
+
 use teaming;
 
 /* Create the flat table to import the CSV file into */
@@ -336,7 +345,43 @@ use teaming;
 ;
 
 
-/* Load CSV file into the flat table */
+/* The health care provider taxonomy stores the NUCC taxonomies */
+drop table if exists healthcare_provider_taxonomies;
+create table healthcare_provider_taxonomies (
+    taxonomy_code char(10) not null,
+    provider_type varchar(255),
+    classification varchar(255),
+    specialization varchar(1024),
+    definition text,
+    notes text);
+
+/* Load the local NUCC Taxonomy file into a database table. On Windows systems the NUCC taxonomy file
+  needs to be saved as an ANSI CSV format. This can be done in Excel by opening the CSV file and
+  saving the file as "CSV (MS-DOS)".
+
+  LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\nucc_taxonomy_140_ansi.csv' INTO TABLE
+
+*/
+
+LOAD DATA LOCAL INFILE '/tmp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provider_taxonomies
+      FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
+      LINES TERMINATED BY '\r\n'
+      IGNORE 1 LINES
+;
+
+/*
+
+ Load a local NPPES CSV file into the flat table. This will load the entire national file into a
+ loading table. We also need to handle the conversion of empty strings into NULL valuesLes Morgan
+1:48 PM
+LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\NPPES_Data_Dissemination_June_2014\\npidata_20050523-20140608.csv' INTO TABLE Load_NPPES_flat
+
+ The path needs to be configured by the user. As an example on a Windows system for user Les and the June 2014 NPPES would like:
+
+LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\NPPES_Data_Dissemination_June_2014\\npidata_20050523-20140608.csv' INTO TABLE Load_NPPES_flat
+
+ */
+
 LOAD DATA LOCAL INFILE '/tmp/npidata_20050523-20140608.csv' INTO TABLE Load_NPPES_flat
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\n'
@@ -657,6 +702,27 @@ Parent_Organization_TIN = case @Parent_Organization_TIN when '' then NULL else @
 Authorized_Official_Name_Prefix_Text = case @Authorized_Official_Name_Prefix_Text when '' then NULL else @Authorized_Official_Name_Prefix_Text end,
 Authorized_Official_Name_Suffix_Text = case @Authorized_Official_Name_Suffix_Text when '' then NULL else @Authorized_Official_Name_Suffix_Text end,
 Authorized_Official_Credential_Text = case @Authorized_Official_Credential_Text when '' then NULL else @Authorized_Official_Credential_Text end;
+
+/*
+
+****** IMPORTANT STEP *****
+
+Configure the query below which creates the NPPES_flat table to create a restricted
+ subset of the table. If for example you want the whole National file the
+
+drop table if exists NPPES_flat;
+create table NPPES_Flat as
+  select * from Load_NPPES_Flat;
+
+Or if you wanted to select providers from multiple states:
+
+drop table if exists NPPES_flat;
+create table NPPES_Flat as
+  select * from Load_NPPES_Flat where Provider_Business_Practice_Location_Address_State_Name in  ('NY', 'CT', 'MA', 'RI', 'NH', 'ME', 'VT');
+
+If you want to create a
+
+ */
 
 drop table if exists NPPES_flat;
 create table NPPES_Flat as
@@ -1005,24 +1071,6 @@ drop table if exists NPPES_header;
 
 insert into NPPES_header (NPI,Entity_Type_Code,Replacement_NPI,Employer_Identification_Number_EIN,Provider_Organization_Name_Legal_Business_Name,Provider_Last_Name_Legal_Name,Provider_First_Name,Provider_Middle_Name,Provider_Name_Prefix_Text,Provider_Name_Suffix_Text,Provider_Credential_Text,Provider_Other_Organization_Name,Provider_Other_Organization_Name_Type_Code,Provider_Other_Last_Name,Provider_Other_First_Name,Provider_Other_Middle_Name,Provider_Other_Name_Prefix_Text,Provider_Other_Name_Suffix_Text,Provider_Other_Credential_Text,Provider_Other_Last_Name_Type_Code,Provider_First_Line_Business_Mailing_Address,Provider_Second_Line_Business_Mailing_Address,Provider_Business_Mailing_Address_City_Name,Provider_Business_Mailing_Address_State_Name,Provider_Business_Mailing_Address_Postal_Code,Provider_Business_Mailing_Address_Country_Cod,Provider_Business_Mailing_Address_Telephone_Number,Provider_Business_Mailing_Address_Fax_Number,Provider_First_Line_Business_Practice_Location_Address,Provider_Second_Line_Business_Practice_Location_Address,Provider_Business_Practice_Location_Address_City_Name,Provider_Business_Practice_Location_Address_State_Name,Provider_Business_Practice_Location_Address_Postal_Code,Provider_Business_Practice_Location_Address_Country_Cod,Provider_Business_Practice_Location_Address_Telephone_Number,Provider_Business_Practice_Location_Address_Fax_Number,Provider_Enumeration_Date,Last_Update_Date,NPI_Deactivation_Reason_Code,NPI_Deactivation_Date,NPI_Reactivation_Date,Provider_Gender_Code,Authorized_Official_Last_Name,Authorized_Official_First_Name,Authorized_Official_Middle_Name,Authorized_Official_Title_or_Position,Authorized_Official_Telephone_Number,Is_Sole_Proprietor,Is_Organization_Subpart,Parent_Organization_LBN,Parent_Organization_TIN,Authorized_Official_Name_Prefix_Text,Authorized_Official_Name_Suffix_Text,Authorized_Official_Credential_Text)
     select NPI,Entity_Type_Code,Replacement_NPI,Employer_Identification_Number_EIN,Provider_Organization_Name_Legal_Business_Name,Provider_Last_Name_Legal_Name,Provider_First_Name,Provider_Middle_Name,Provider_Name_Prefix_Text,Provider_Name_Suffix_Text,Provider_Credential_Text,Provider_Other_Organization_Name,Provider_Other_Organization_Name_Type_Code,Provider_Other_Last_Name,Provider_Other_First_Name,Provider_Other_Middle_Name,Provider_Other_Name_Prefix_Text,Provider_Other_Name_Suffix_Text,Provider_Other_Credential_Text,Provider_Other_Last_Name_Type_Code,Provider_First_Line_Business_Mailing_Address,Provider_Second_Line_Business_Mailing_Address,Provider_Business_Mailing_Address_City_Name,Provider_Business_Mailing_Address_State_Name,Provider_Business_Mailing_Address_Postal_Code,Provider_Business_Mailing_Address_Country_Cod,Provider_Business_Mailing_Address_Telephone_Number,Provider_Business_Mailing_Address_Fax_Number,Provider_First_Line_Business_Practice_Location_Address,Provider_Second_Line_Business_Practice_Location_Address,Provider_Business_Practice_Location_Address_City_Name,Provider_Business_Practice_Location_Address_State_Name,Provider_Business_Practice_Location_Address_Postal_Code,Provider_Business_Practice_Location_Address_Country_Cod,Provider_Business_Practice_Location_Address_Telephone_Number,Provider_Business_Practice_Location_Address_Fax_Number,Provider_Enumeration_Date,Last_Update_Date,NPI_Deactivation_Reason_Code,NPI_Deactivation_Date,NPI_Reactivation_Date,Provider_Gender_Code,Authorized_Official_Last_Name,Authorized_Official_First_Name,Authorized_Official_Middle_Name,Authorized_Official_Title_or_Position,Authorized_Official_Telephone_Number,Is_Sole_Proprietor,Is_Organization_Subpart,Parent_Organization_LBN,Parent_Organization_TIN,Authorized_Official_Name_Prefix_Text,Authorized_Official_Name_Suffix_Text,Authorized_Official_Credential_Text from NPPES_flat;
-
-
-/* The health care provider taxonomy stores the NUCC taxonomies */
-drop table if exists healthcare_provider_taxonomies;
-create table healthcare_provider_taxonomies (
-    taxonomy_code char(10) not null,
-    provider_type varchar(255),
-    classification varchar(255),
-    specialization varchar(1024),
-    definition text,
-    notes text);
-
-/* Load in the NUCC Taxonomy file */
-LOAD DATA LOCAL INFILE '/tmp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provider_taxonomies
-      FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
-      LINES TERMINATED BY '\r\n'
-      IGNORE 1 LINES
-;
 
 /* Holds the provider processed taxonomies */
 drop table if exists healthcare_provider_taxonomy_processed;

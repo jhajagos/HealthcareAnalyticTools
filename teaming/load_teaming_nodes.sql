@@ -2029,5 +2029,5 @@ AS
           is_psychiatry,
           is_nuclear_radiology,
           is_hematology_and_oncology
-     FROM nppes.npi_summary_detailed_primary_taxonomy nsdpt;
+     FROM npi_summary_detailed_primary_taxonomy nsdpt;
 

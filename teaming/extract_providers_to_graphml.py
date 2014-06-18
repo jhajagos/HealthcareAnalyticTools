@@ -1,9 +1,10 @@
 """
 Script to extract a sub-graph from the Teaming dataset data set that is loaded in a MySQL
-database.
+database. This script can use any variable in the node database as a selector. The node
+database that you are connecting is "loading_teaming_nodes.sql". The "loading_teaming_nodes.sql"
+populates the nodes database from provider for specific states.
 
-Database connection is made through ODBC connection but could easily be modified for
-any pydbapi compatible
+A database connection is made through a MySQL database that has a DSN called teaming.
 
 """
 
@@ -22,11 +23,12 @@ def load_configuration(file_name="config.json.example"):
         configuration = json.load(f)
         return configuration
 
-if os.path.exists("config.json"):
+if os.path.exists("config.json"): # Checks for a configuration file
     config = load_configuration("config.json")
-else:
+else: # if no configuration file exists it loads the default "config.json.example"
     config = load_configuration()
 
+#Set the configuration for the script
 REFERRAL_TABLE_NAME = config["REFERRAL_TABLE_NAME"]
 NPI_DETAIL_TABLE_NAME = config["NPI_DETAIL_TABLE_NAME"]
 FIELD_NAME_FROM_RELATIONSHIP = config["FIELD_NAME_FROM_RELATIONSHIP"]
@@ -35,17 +37,18 @@ FIELD_NAME_WEIGHT = config["FIELD_NAME_WEIGHT"]
 
 
 def logger(string_to_write=""):
+    """Print to the standard input"""
     print(string_to_write)
 
-
-
 def get_new_cursor(dsn_name="teaming"):
+    """Open the connection to the database and returns a cursor for executing queries"""
     logger("Opening connection %s" % dsn_name)
     connection = odbc.connect("DSN=%s" % dsn_name, autocommit=True)
     return connection.cursor()
 
 
-def row_to_dictionary(row_obj,exclude_None = True):
+def row_to_dictionary(row_obj, exclude_None = True):
+    """Convert a row to a Python dictionary that is easier to work with"""
     column_names = [desc[0] for desc in row_obj.cursor_description]
     row_dict = {}
     for i in range(len(column_names)):
@@ -56,6 +59,7 @@ def row_to_dictionary(row_obj,exclude_None = True):
 
 
 def add_nodes_to_graph(cursor, graph, node_type, label_name = None):
+    """Add nodes to the graph from the return query"""
     i = 0
     nodes_initial = len(graph.nodes())
     for node in cursor:
@@ -73,6 +77,7 @@ def add_nodes_to_graph(cursor, graph, node_type, label_name = None):
 
 
 def add_edges_to_graph(cursor, graph, name="shares patients"):
+    """Add edges to the graph from the query"""
     i = 0
     counter_dict = {}
 
@@ -106,7 +111,13 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
          field_name_to_relationship=FIELD_NAME_TO_RELATIONSHIP, field_name_from_relationship=FIELD_NAME_FROM_RELATIONSHIP,
          file_name_prefix="",add_leaf_to_leaf_edges=False, node_label_name="provider_name",
          field_name_weight=FIELD_NAME_WEIGHT, add_leaf_nodes=True, graph_type="directed", csv_output=True):
-    cursor = get_new_cursor()
+    """Main script for extracting the provider graph from the MySQL database."""
+
+    cursor = get_new_cursor() #Get an active connection to the database
+
+    #Show the configuration that the script is running with
+    #To pipe the output to a file use the > operator to redirect output to a file:
+    #python extract_providers_to_graphml.py "zip5 in ('02535,'02539','02568','02557','02575')" mi_prov Leaf-edges > log.txt
 
     logger("Configuration")
     logger("Selection criteria for subset graph: %s" % where_criteria)
@@ -116,16 +127,21 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
     logger("Leaf-to-leaf edges will be exported? %s" % add_leaf_to_leaf_edges)
 
     logger()
-    drop_table_sql = "drop table if exists npi_to_export_to_graph;"
+    drop_table_sql = "drop table if exists npi_to_export_to_graph;" # This table is a temporary table but it is not designed for concurrent running of the script
     logger(drop_table_sql)
-    cursor.execute(drop_table_sql)
+    cursor.execute(drop_table_sql) # Drop table that was used in the last export of a provider graph
 
     logger()
-    create_table_sql = "create table npi_to_export_to_graph (npi char(10),node_type char(1));"
+    create_table_sql = "create table npi_to_export_to_graph (npi char(10),node_type char(1));" # Create the temporary table for storing NPI extracted from the graph
+    # Type of a node can be either core or leaf. The core node is one that is directly selected based on the selection criteria. The selection
+    # criteria is specified as a SQL where clause on the commandline. The leaf nodes are nodes that are connected through a shared edge with the core.
+
     logger(create_table_sql)
     cursor.execute(create_table_sql)
 
     # Get NPI from each side of the relationship
+    # The teaming database is a directed graph. Between two nodes (providers) they can have different connection directions.
+
     query_first_part = """select distinct npi from %s rt1 join %s tnd1 on rt1.%s = tnd1.npi where %s""" % (referral_table_name,npi_detail_table_name,field_name_from_relationship, where_criteria)
     query_second_part = """select distinct npi from %s rt2 join %s tnd2 on rt2.%s = tnd2.npi where %s""" % (referral_table_name,npi_detail_table_name,field_name_to_relationship, where_criteria)
     core_node_query_to_execute = "insert into npi_to_export_to_graph (npi,node_type) select t.*,'C' from (\n%s\nunion\n%s)\nt;" % (query_first_part, query_second_part)
@@ -133,22 +149,25 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
     logger(core_node_query_to_execute)
     cursor.execute(core_node_query_to_execute)
 
+    # Add an index to the temporary table to make extraction of node detail to happen in a reasonable amount of time
     logger("Adding indices")
     cursor.execute("create unique index idx_primary_npi_graph on npi_to_export_to_graph(npi);")
-
     npi_detail_query_to_execute = "select * from npi_to_export_to_graph neg join %s tnd on tnd.npi = neg.npi" % npi_detail_table_name
     logger(npi_detail_query_to_execute)
 
+    # Populate the nodes are directly selected criteria
     logger("Populating core nodes")
     cursor.execute(npi_detail_query_to_execute)
 
+    # Select the default directed graph. Here we call the networkx Graph object
     if graph_type == "directed":
         ProviderGraph = nx.DiGraph()
-    elif graph_type == "undirected":
+    elif graph_type == "undirected": # Warning this is not tested currently
         ProviderGraph = nx.Graph()
 
     ProviderGraph = add_nodes_to_graph(cursor, ProviderGraph, "core", label_name=node_label_name)
 
+    # If leaf nodes are select the script will import them into the database
     if add_leaf_nodes:
         logger("Adding leaf nodes")
 
@@ -162,14 +181,17 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
         logger(add_leaf_node_query_to_execute)
         cursor.execute(add_leaf_node_query_to_execute)
 
+        # These are the connected nodes to the primary nodes
         logger("Populating leaf nodes")
 
+        # Populate the details to the leaf nodes
         populate_leaf_nodes_query_to_execute = """select * from npi_to_export_to_graph neg join %s tnd
             on tnd.npi = neg.npi where neg.node_type = 'L'""" % npi_detail_table_name
         logger(populate_leaf_nodes_query_to_execute)
         cursor.execute(populate_leaf_nodes_query_to_execute)
         ProviderGraph = add_nodes_to_graph(cursor, ProviderGraph, "leaf", label_name=node_label_name)
 
+    # Add in the edges to the data
     logger("Populating edges")
 
     query_first_part_edges = """select rt1.%s,rt1.%s, rt1.%s,
@@ -186,6 +208,7 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
 
     add_core_query_to_execute = "%s\nunion\n%s" % (query_first_part_edges, query_second_part_edges)
 
+    # Add the leaf edges to the data
     logger(add_core_query_to_execute)
     cursor.execute(add_core_query_to_execute)
     ProviderGraph = add_edges_to_graph(cursor, ProviderGraph)
@@ -228,7 +251,7 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
         csv_node_file_name = file_name_prefix + "_node_db.csv"
         logger("Writing CSV of nodes with attributes")
 
-        with open(csv_node_file_name,"wb") as fw:
+        with open(csv_node_file_name, "wb") as fw:
             i = 0
             csv_nodes = csv.writer(fw)
             for node in ProviderGraph.node:
@@ -237,9 +260,11 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
                 if i == 0:
                     header = node_dict.keys()
                     header.sort()
+                    header = ["node_id"] + header
+
                     csv_nodes.writerow(header)
 
-                row_to_write = []
+                row_to_write = [node]
                 for attribute in header:
                     if attribute in node_dict:
                         value_to_write = node_dict[attribute]

@@ -722,7 +722,7 @@ Or if you wanted to select providers from multiple states:
 
 drop table if exists NPPES_flat;
 create table NPPES_flat as
-  select * from Load_NPPES_flat where Provider_Business_Practice_Location_Address_State_Name in  ('NY', 'CT', 'MA', 'RI', 'NH', 'ME', 'VT');
+  select * from Load_NPPES_flat where Provider_Business_Practice_Location_Address_State_Name in ('NY', 'CT', 'MA', 'RI', 'NH', 'ME', 'VT');
 
 
  */

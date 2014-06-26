@@ -18,20 +18,20 @@ import csv
 import json
 import os
 
-def load_configuration(file_name="config.json.example"):
+def load_configuration(file_name="config.json.old.example"):
     with open(file_name, "r") as f:
         configuration = json.load(f)
         return configuration
 
 
 """
-Save a copy of config.json.example to config.json. Here you can configure how the script runs and which
+Save a copy of config.json.old.example to config.json.old. Here you can configure how the script runs and which
 tables are linked to.
 """
 
-if os.path.exists("config.json"): # Checks for a configuration file
-    config = load_configuration("config.json")
-else: # if no configuration file exists it loads the default "config.json.example"
+if os.path.exists("config.json.old"): # Checks for a configuration file
+    config = load_configuration("config.json.old")
+else: # if no configuration file exists it loads the default "config.json.old.example"
     config = load_configuration()
 
 #Set the configuration for the script

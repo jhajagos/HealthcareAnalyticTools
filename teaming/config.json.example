@@ -4,6 +4,6 @@
     "FIELD_NAME_FROM_RELATIONSHIP": "npi_from",
     "FIELD_NAME_TO_RELATIONSHIP": "npi_to",
     "FIELD_NAME_WEIGHT": "patient_total",
-    "_comment": "Save a copy of config.json.example to config.json. Here you can configure how the script runs and which
+    "_comment": "Save a copy of config.json.old.example to config.json.old. Here you can configure how the script runs and which
 tables are linked to."
 }

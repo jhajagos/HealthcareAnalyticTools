@@ -729,7 +729,7 @@ create table NPPES_flat as
 
 drop table if exists NPPES_flat;
 create table NPPES_flat as
-  select * from Load_NPPES_flat where Provider_Business_Practice_Location_Address_State_Name = 'MA';
+  select * from Load_NPPES_flat; /* where Provider_Business_Practice_Location_Address_State_Name = 'MA'; */
 
 /*
 Run this query:
@@ -1804,6 +1804,8 @@ drop table if exists temp_max_id_address;
 
 create table temp_max_id_address (max_id integer, counter integer, address_hash varchar(1023));
 
+
+
 insert into temp_max_id_address (max_id, counter, address_hash)
   select max(id),count(*),address_hash from nppes_contact group by address_hash order by count(*) desc;
 
@@ -1827,11 +1829,19 @@ create table address
     geocode_method varchar(64)
     );
 
+create index idx_nppes_contact_hash on nppes_contact(address_hash);
+create index idx_tmi_hash on temp_max_id_address(address_hash);
+
 /* Populate the address table */
 insert address (first_line, second_line, city, state, postal_code, country_code, address_flattened, address_formatted, address_hash)
   select nc.first_line, nc.second_line, nc.city, nc.state, nc.postal_code, nc.country_code,
     nc.address_flattened, nc.address_formatted, nc.address_hash from nppes_contact nc
    join temp_max_id_address tmi on tmi.address_hash = nc.address_hash and tmi.max_id = nc.id;
+
+create index idx_address_addr_hash on address(address_hash);
+
+/*
+This appears to be a bottleneck as the table is rewritten
 
 alter table nppes_contact drop column first_line;
 alter table nppes_contact drop column second_line;
@@ -1840,6 +1850,7 @@ alter table nppes_contact drop column state;
 alter table nppes_contact drop column postal_code;
 alter table nppes_contact drop column address_formatted;
 alter table nppes_contact drop column address_flattened;
+*/
 
 update address set zip5 = left(postal_code, 5), zip4 = substring(postal_code, 6, 4);
 
@@ -1848,11 +1859,7 @@ update address set zip5 = left(postal_code, 5), zip4 = substring(postal_code, 6,
 create unique index pk_npi_hct_proc on healthcare_provider_taxonomy_processed(npi);
 create index idx_oth_prov_id_npi on other_provider_identifiers(npi);
 create index idx_provider_licenses on provider_licenses(npi);
-/*alter table address modify address_hash varchar(64);
-alter table nppes_contact modify address_hash varchar(64);*/
-create index idx_address_addr_hash on address(address_hash);
 
-create index idx_nppes_contact_hash on nppes_contact(address_hash);
 create index idx_addr_zip4 on address(zip4);
 create index idx_addr_zip5 on address(zip5);
 create index idx_addr_city on address(city);
@@ -1863,7 +1870,6 @@ create index idx_addr_geocdm on address(geocode_method);
 create unique index idx_npi_npi_header on nppes_header(npi);
 create index idx_nppes_contact_npi on nppes_contact(npi);
 create index idx_nppes_contact_address_type on nppes_contact(address_type);
-
 
 drop table if exists npi_summary_detailed1;
 create table npi_summary_detailed1 as
@@ -1980,8 +1986,11 @@ select count(*) from NPPES_flat;
 
  */
 
+/*
 
+NPI Summary Taxonomy Indicators
 
+*/
 drop view if exists npi_summary_abridged_primary_taxonomy;
 CREATE VIEW npi_summary_abridged_primary_taxonomy
 AS

@@ -23,6 +23,12 @@ def load_configuration(file_name="config.json.example"):
         configuration = json.load(f)
         return configuration
 
+
+"""
+Save a copy of config.json.example to config.json. Here you can configure how the script runs and which
+tables are linked to.
+"""
+
 if os.path.exists("config.json"): # Checks for a configuration file
     config = load_configuration("config.json")
 else: # if no configuration file exists it loads the default "config.json.example"

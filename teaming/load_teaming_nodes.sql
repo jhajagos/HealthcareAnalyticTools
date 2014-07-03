@@ -17,7 +17,7 @@
 
 If you are doing a fresh load of the database you want to
 
-drop table if exists NPPES_flat;
+drop table if exists tmp_NPPES_flat;
 create database teaming;
 
 */
@@ -26,8 +26,8 @@ use teaming;
 
 /* Create the flat table to import the CSV file into */
 
- drop table if exists Load_NPPES_flat;
-    create table Load_NPPES_flat (
+ drop table if exists Load_tmp_NPPES_flat;
+    create table Load_tmp_NPPES_flat (
         NPI CHAR(10),
     Entity_Type_Code CHAR(1),
     Replacement_NPI CHAR(10),
@@ -363,7 +363,8 @@ create table healthcare_provider_taxonomies (
 
 */
 
-LOAD DATA LOCAL INFILE '/tmp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provider_taxonomies
+/* If loading from a local file sytem should be LOAD DATA LOCAL INFILE */
+LOAD DATA INFILE '/tmp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provider_taxonomies
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\r\n'
       IGNORE 1 LINES
@@ -374,15 +375,17 @@ LOAD DATA LOCAL INFILE '/tmp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provid
  Load a local NPPES CSV file into the flat table. This will load the entire national file into a
  loading table. We also need to handle the conversion of empty strings into NULL valuesLes Morgan
 1:48 PM
-LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\NPPES_Data_Dissemination_June_2014\\npidata_20050523-20140608.csv' INTO TABLE Load_NPPES_flat
+LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\NPPES_Data_Dissemination_June_2014\\npidata_20050523-20140608.csv' INTO TABLE Load_tmp_NPPES_flat
 
  The path needs to be configured by the user. As an example on a Windows system for user Les and the June 2014 NPPES would like:
 
-LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\NPPES_Data_Dissemination_June_2014\\npidata_20050523-20140608.csv' INTO TABLE Load_NPPES_flat
+LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\NPPES_Data_Dissemination_June_2014\\npidata_20050523-20140608.csv' INTO TABLE Load_tmp_NPPES_flat
 
  */
 
-LOAD DATA LOCAL INFILE '/tmp/npidata_20050523-20140608.csv' INTO TABLE Load_NPPES_flat
+/* If loading from a local file sytem should be LOAD DATA LOCAL INFILE */
+
+LOAD DATA INFILE '/tmp/npidata_20050523-20140608.csv' INTO TABLE Load_tmp_NPPES_flat
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\n'
       IGNORE 1 LINES
@@ -703,7 +706,7 @@ Authorized_Official_Name_Prefix_Text = case @Authorized_Official_Name_Prefix_Tex
 Authorized_Official_Name_Suffix_Text = case @Authorized_Official_Name_Suffix_Text when '' then NULL else @Authorized_Official_Name_Suffix_Text end,
 Authorized_Official_Credential_Text = case @Authorized_Official_Credential_Text when '' then NULL else @Authorized_Official_Credential_Text end;
 
-/*select * from load_nppes_flat limit 1000; */
+/*select * from load_tmp_NPPES_flat limit 1000; */
 
 
 
@@ -711,30 +714,30 @@ Authorized_Official_Credential_Text = case @Authorized_Official_Credential_Text 
 
 ****** IMPORTANT STEP ******
 
-Configure the query below which creates the NPPES_flat table to create a restricted
+Configure the query below which creates the tmp_NPPES_flat table to create a restricted
  subset of the table. If for example you want the whole National file the
 
-drop table if exists NPPES_flat;
-create table NPPES_Flat as
-  select * from Load_NPPES_flat;
+drop table if exists tmp_NPPES_flat;
+create table tmp_NPPES_flat as
+  select * from Load_tmp_NPPES_flat;
 
 Or if you wanted to select providers from multiple states:
 
-drop table if exists NPPES_flat;
-create table NPPES_flat as
-  select * from Load_NPPES_flat where Provider_Business_Practice_Location_Address_State_Name in ('NY', 'CT', 'MA', 'RI', 'NH', 'ME', 'VT');
+drop table if exists tmp_NPPES_flat;
+create table tmp_NPPES_flat as
+  select * from Load_tmp_NPPES_flat where Provider_Business_Practice_Location_Address_State_Name in ('NY', 'CT', 'MA', 'RI', 'NH', 'ME', 'VT');
 
 
  */
 
-drop table if exists NPPES_flat;
-create table NPPES_flat as
-  select * from Load_NPPES_flat; /* where Provider_Business_Practice_Location_Address_State_Name = 'MA'; */
+drop table if exists tmp_NPPES_flat;
+create table tmp_NPPES_flat as
+  select * from Load_tmp_NPPES_flat where Provider_Business_Practice_Location_Address_State_Name = 'MA';
 
 /*
 Run this query:
 
-select count(*) from NPPES_flat;
+select count(*) from tmp_NPPES_flat;
 
 Keep record count to compare to the final table creation step
 
@@ -742,8 +745,8 @@ Keep record count to compare to the final table creation step
 
 
 /* Holds identifiers for providers, for example, a state Medicaid identifier. */
-drop table if exists other_provider_identifiers;
-    create table other_provider_identifiers (
+drop table if exists tmp_other_provider_identifiers;
+    create table tmp_other_provider_identifiers (
     npi char(10),
     sequence_id integer,
     Other_Provider_Identifier VARCHAR(20),
@@ -751,215 +754,215 @@ drop table if exists other_provider_identifiers;
     Other_Provider_Identifier_Issuer VARCHAR(80),
     Other_Provider_Identifier_State VARCHAR(2));
 
-/* Identifiers are generated by denormalizing the NPPES_flat table. The insert statements
+/* Identifiers are generated by denormalizing the tmp_NPPES_flat table. The insert statements
 below can be executed as a group.
 
 
 */
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 1, Other_Provider_Identifier_1,Other_Provider_Identifier_Type_Code_1,Other_Provider_Identifier_Issuer_1,Other_Provider_Identifier_State_1 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 1, Other_Provider_Identifier_1,Other_Provider_Identifier_Type_Code_1,Other_Provider_Identifier_Issuer_1,Other_Provider_Identifier_State_1 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_1 is not NULL or Other_Provider_Identifier_Type_Code_1 is not NULL or Other_Provider_Identifier_Issuer_1 is not NULL or Other_Provider_Identifier_State_1 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 2, Other_Provider_Identifier_2,Other_Provider_Identifier_Type_Code_2,Other_Provider_Identifier_Issuer_2,Other_Provider_Identifier_State_2 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 2, Other_Provider_Identifier_2,Other_Provider_Identifier_Type_Code_2,Other_Provider_Identifier_Issuer_2,Other_Provider_Identifier_State_2 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_2 is not NULL or Other_Provider_Identifier_Type_Code_2 is not NULL or Other_Provider_Identifier_Issuer_2 is not NULL or Other_Provider_Identifier_State_2 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 3, Other_Provider_Identifier_3,Other_Provider_Identifier_Type_Code_3,Other_Provider_Identifier_Issuer_3,Other_Provider_Identifier_State_3 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 3, Other_Provider_Identifier_3,Other_Provider_Identifier_Type_Code_3,Other_Provider_Identifier_Issuer_3,Other_Provider_Identifier_State_3 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_3 is not NULL or Other_Provider_Identifier_Type_Code_3 is not NULL or Other_Provider_Identifier_Issuer_3 is not NULL or Other_Provider_Identifier_State_3 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 4, Other_Provider_Identifier_4,Other_Provider_Identifier_Type_Code_4,Other_Provider_Identifier_Issuer_4,Other_Provider_Identifier_State_4 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 4, Other_Provider_Identifier_4,Other_Provider_Identifier_Type_Code_4,Other_Provider_Identifier_Issuer_4,Other_Provider_Identifier_State_4 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_4 is not NULL or Other_Provider_Identifier_Type_Code_4 is not NULL or Other_Provider_Identifier_Issuer_4 is not NULL or Other_Provider_Identifier_State_4 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 5, Other_Provider_Identifier_5,Other_Provider_Identifier_Type_Code_5,Other_Provider_Identifier_Issuer_5,Other_Provider_Identifier_State_5 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 5, Other_Provider_Identifier_5,Other_Provider_Identifier_Type_Code_5,Other_Provider_Identifier_Issuer_5,Other_Provider_Identifier_State_5 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_5 is not NULL or Other_Provider_Identifier_Type_Code_5 is not NULL or Other_Provider_Identifier_Issuer_5 is not NULL or Other_Provider_Identifier_State_5 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 6, Other_Provider_Identifier_6,Other_Provider_Identifier_Type_Code_6,Other_Provider_Identifier_Issuer_6,Other_Provider_Identifier_State_6 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 6, Other_Provider_Identifier_6,Other_Provider_Identifier_Type_Code_6,Other_Provider_Identifier_Issuer_6,Other_Provider_Identifier_State_6 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_6 is not NULL or Other_Provider_Identifier_Type_Code_6 is not NULL or Other_Provider_Identifier_Issuer_6 is not NULL or Other_Provider_Identifier_State_6 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 7, Other_Provider_Identifier_7,Other_Provider_Identifier_Type_Code_7,Other_Provider_Identifier_Issuer_7,Other_Provider_Identifier_State_7 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 7, Other_Provider_Identifier_7,Other_Provider_Identifier_Type_Code_7,Other_Provider_Identifier_Issuer_7,Other_Provider_Identifier_State_7 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_7 is not NULL or Other_Provider_Identifier_Type_Code_7 is not NULL or Other_Provider_Identifier_Issuer_7 is not NULL or Other_Provider_Identifier_State_7 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 8, Other_Provider_Identifier_8,Other_Provider_Identifier_Type_Code_8,Other_Provider_Identifier_Issuer_8,Other_Provider_Identifier_State_8 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 8, Other_Provider_Identifier_8,Other_Provider_Identifier_Type_Code_8,Other_Provider_Identifier_Issuer_8,Other_Provider_Identifier_State_8 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_8 is not NULL or Other_Provider_Identifier_Type_Code_8 is not NULL or Other_Provider_Identifier_Issuer_8 is not NULL or Other_Provider_Identifier_State_8 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 9, Other_Provider_Identifier_9,Other_Provider_Identifier_Type_Code_9,Other_Provider_Identifier_Issuer_9,Other_Provider_Identifier_State_9 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 9, Other_Provider_Identifier_9,Other_Provider_Identifier_Type_Code_9,Other_Provider_Identifier_Issuer_9,Other_Provider_Identifier_State_9 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_9 is not NULL or Other_Provider_Identifier_Type_Code_9 is not NULL or Other_Provider_Identifier_Issuer_9 is not NULL or Other_Provider_Identifier_State_9 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 10, Other_Provider_Identifier_10,Other_Provider_Identifier_Type_Code_10,Other_Provider_Identifier_Issuer_10,Other_Provider_Identifier_State_10 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 10, Other_Provider_Identifier_10,Other_Provider_Identifier_Type_Code_10,Other_Provider_Identifier_Issuer_10,Other_Provider_Identifier_State_10 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_10 is not NULL or Other_Provider_Identifier_Type_Code_10 is not NULL or Other_Provider_Identifier_Issuer_10 is not NULL or Other_Provider_Identifier_State_10 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 11, Other_Provider_Identifier_11,Other_Provider_Identifier_Type_Code_11,Other_Provider_Identifier_Issuer_11,Other_Provider_Identifier_State_11 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 11, Other_Provider_Identifier_11,Other_Provider_Identifier_Type_Code_11,Other_Provider_Identifier_Issuer_11,Other_Provider_Identifier_State_11 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_11 is not NULL or Other_Provider_Identifier_Type_Code_11 is not NULL or Other_Provider_Identifier_Issuer_11 is not NULL or Other_Provider_Identifier_State_11 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 12, Other_Provider_Identifier_12,Other_Provider_Identifier_Type_Code_12,Other_Provider_Identifier_Issuer_12,Other_Provider_Identifier_State_12 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 12, Other_Provider_Identifier_12,Other_Provider_Identifier_Type_Code_12,Other_Provider_Identifier_Issuer_12,Other_Provider_Identifier_State_12 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_12 is not NULL or Other_Provider_Identifier_Type_Code_12 is not NULL or Other_Provider_Identifier_Issuer_12 is not NULL or Other_Provider_Identifier_State_12 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 13, Other_Provider_Identifier_13,Other_Provider_Identifier_Type_Code_13,Other_Provider_Identifier_Issuer_13,Other_Provider_Identifier_State_13 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 13, Other_Provider_Identifier_13,Other_Provider_Identifier_Type_Code_13,Other_Provider_Identifier_Issuer_13,Other_Provider_Identifier_State_13 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_13 is not NULL or Other_Provider_Identifier_Type_Code_13 is not NULL or Other_Provider_Identifier_Issuer_13 is not NULL or Other_Provider_Identifier_State_13 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 14, Other_Provider_Identifier_14,Other_Provider_Identifier_Type_Code_14,Other_Provider_Identifier_Issuer_14,Other_Provider_Identifier_State_14 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 14, Other_Provider_Identifier_14,Other_Provider_Identifier_Type_Code_14,Other_Provider_Identifier_Issuer_14,Other_Provider_Identifier_State_14 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_14 is not NULL or Other_Provider_Identifier_Type_Code_14 is not NULL or Other_Provider_Identifier_Issuer_14 is not NULL or Other_Provider_Identifier_State_14 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 15, Other_Provider_Identifier_15,Other_Provider_Identifier_Type_Code_15,Other_Provider_Identifier_Issuer_15,Other_Provider_Identifier_State_15 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 15, Other_Provider_Identifier_15,Other_Provider_Identifier_Type_Code_15,Other_Provider_Identifier_Issuer_15,Other_Provider_Identifier_State_15 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_15 is not NULL or Other_Provider_Identifier_Type_Code_15 is not NULL or Other_Provider_Identifier_Issuer_15 is not NULL or Other_Provider_Identifier_State_15 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 16, Other_Provider_Identifier_16,Other_Provider_Identifier_Type_Code_16,Other_Provider_Identifier_Issuer_16,Other_Provider_Identifier_State_16 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 16, Other_Provider_Identifier_16,Other_Provider_Identifier_Type_Code_16,Other_Provider_Identifier_Issuer_16,Other_Provider_Identifier_State_16 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_16 is not NULL or Other_Provider_Identifier_Type_Code_16 is not NULL or Other_Provider_Identifier_Issuer_16 is not NULL or Other_Provider_Identifier_State_16 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 17, Other_Provider_Identifier_17,Other_Provider_Identifier_Type_Code_17,Other_Provider_Identifier_Issuer_17,Other_Provider_Identifier_State_17 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 17, Other_Provider_Identifier_17,Other_Provider_Identifier_Type_Code_17,Other_Provider_Identifier_Issuer_17,Other_Provider_Identifier_State_17 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_17 is not NULL or Other_Provider_Identifier_Type_Code_17 is not NULL or Other_Provider_Identifier_Issuer_17 is not NULL or Other_Provider_Identifier_State_17 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 18, Other_Provider_Identifier_18,Other_Provider_Identifier_Type_Code_18,Other_Provider_Identifier_Issuer_18,Other_Provider_Identifier_State_18 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 18, Other_Provider_Identifier_18,Other_Provider_Identifier_Type_Code_18,Other_Provider_Identifier_Issuer_18,Other_Provider_Identifier_State_18 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_18 is not NULL or Other_Provider_Identifier_Type_Code_18 is not NULL or Other_Provider_Identifier_Issuer_18 is not NULL or Other_Provider_Identifier_State_18 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 19, Other_Provider_Identifier_19,Other_Provider_Identifier_Type_Code_19,Other_Provider_Identifier_Issuer_19,Other_Provider_Identifier_State_19 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 19, Other_Provider_Identifier_19,Other_Provider_Identifier_Type_Code_19,Other_Provider_Identifier_Issuer_19,Other_Provider_Identifier_State_19 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_19 is not NULL or Other_Provider_Identifier_Type_Code_19 is not NULL or Other_Provider_Identifier_Issuer_19 is not NULL or Other_Provider_Identifier_State_19 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 20, Other_Provider_Identifier_20,Other_Provider_Identifier_Type_Code_20,Other_Provider_Identifier_Issuer_20,Other_Provider_Identifier_State_20 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 20, Other_Provider_Identifier_20,Other_Provider_Identifier_Type_Code_20,Other_Provider_Identifier_Issuer_20,Other_Provider_Identifier_State_20 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_20 is not NULL or Other_Provider_Identifier_Type_Code_20 is not NULL or Other_Provider_Identifier_Issuer_20 is not NULL or Other_Provider_Identifier_State_20 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 21, Other_Provider_Identifier_21,Other_Provider_Identifier_Type_Code_21,Other_Provider_Identifier_Issuer_21,Other_Provider_Identifier_State_21 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 21, Other_Provider_Identifier_21,Other_Provider_Identifier_Type_Code_21,Other_Provider_Identifier_Issuer_21,Other_Provider_Identifier_State_21 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_21 is not NULL or Other_Provider_Identifier_Type_Code_21 is not NULL or Other_Provider_Identifier_Issuer_21 is not NULL or Other_Provider_Identifier_State_21 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 22, Other_Provider_Identifier_22,Other_Provider_Identifier_Type_Code_22,Other_Provider_Identifier_Issuer_22,Other_Provider_Identifier_State_22 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 22, Other_Provider_Identifier_22,Other_Provider_Identifier_Type_Code_22,Other_Provider_Identifier_Issuer_22,Other_Provider_Identifier_State_22 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_22 is not NULL or Other_Provider_Identifier_Type_Code_22 is not NULL or Other_Provider_Identifier_Issuer_22 is not NULL or Other_Provider_Identifier_State_22 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 23, Other_Provider_Identifier_23,Other_Provider_Identifier_Type_Code_23,Other_Provider_Identifier_Issuer_23,Other_Provider_Identifier_State_23 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 23, Other_Provider_Identifier_23,Other_Provider_Identifier_Type_Code_23,Other_Provider_Identifier_Issuer_23,Other_Provider_Identifier_State_23 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_23 is not NULL or Other_Provider_Identifier_Type_Code_23 is not NULL or Other_Provider_Identifier_Issuer_23 is not NULL or Other_Provider_Identifier_State_23 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 24, Other_Provider_Identifier_24,Other_Provider_Identifier_Type_Code_24,Other_Provider_Identifier_Issuer_24,Other_Provider_Identifier_State_24 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 24, Other_Provider_Identifier_24,Other_Provider_Identifier_Type_Code_24,Other_Provider_Identifier_Issuer_24,Other_Provider_Identifier_State_24 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_24 is not NULL or Other_Provider_Identifier_Type_Code_24 is not NULL or Other_Provider_Identifier_Issuer_24 is not NULL or Other_Provider_Identifier_State_24 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 25, Other_Provider_Identifier_25,Other_Provider_Identifier_Type_Code_25,Other_Provider_Identifier_Issuer_25,Other_Provider_Identifier_State_25 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 25, Other_Provider_Identifier_25,Other_Provider_Identifier_Type_Code_25,Other_Provider_Identifier_Issuer_25,Other_Provider_Identifier_State_25 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_25 is not NULL or Other_Provider_Identifier_Type_Code_25 is not NULL or Other_Provider_Identifier_Issuer_25 is not NULL or Other_Provider_Identifier_State_25 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 26, Other_Provider_Identifier_26,Other_Provider_Identifier_Type_Code_26,Other_Provider_Identifier_Issuer_26,Other_Provider_Identifier_State_26 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 26, Other_Provider_Identifier_26,Other_Provider_Identifier_Type_Code_26,Other_Provider_Identifier_Issuer_26,Other_Provider_Identifier_State_26 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_26 is not NULL or Other_Provider_Identifier_Type_Code_26 is not NULL or Other_Provider_Identifier_Issuer_26 is not NULL or Other_Provider_Identifier_State_26 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 27, Other_Provider_Identifier_27,Other_Provider_Identifier_Type_Code_27,Other_Provider_Identifier_Issuer_27,Other_Provider_Identifier_State_27 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 27, Other_Provider_Identifier_27,Other_Provider_Identifier_Type_Code_27,Other_Provider_Identifier_Issuer_27,Other_Provider_Identifier_State_27 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_27 is not NULL or Other_Provider_Identifier_Type_Code_27 is not NULL or Other_Provider_Identifier_Issuer_27 is not NULL or Other_Provider_Identifier_State_27 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 28, Other_Provider_Identifier_28,Other_Provider_Identifier_Type_Code_28,Other_Provider_Identifier_Issuer_28,Other_Provider_Identifier_State_28 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 28, Other_Provider_Identifier_28,Other_Provider_Identifier_Type_Code_28,Other_Provider_Identifier_Issuer_28,Other_Provider_Identifier_State_28 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_28 is not NULL or Other_Provider_Identifier_Type_Code_28 is not NULL or Other_Provider_Identifier_Issuer_28 is not NULL or Other_Provider_Identifier_State_28 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 29, Other_Provider_Identifier_29,Other_Provider_Identifier_Type_Code_29,Other_Provider_Identifier_Issuer_29,Other_Provider_Identifier_State_29 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 29, Other_Provider_Identifier_29,Other_Provider_Identifier_Type_Code_29,Other_Provider_Identifier_Issuer_29,Other_Provider_Identifier_State_29 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_29 is not NULL or Other_Provider_Identifier_Type_Code_29 is not NULL or Other_Provider_Identifier_Issuer_29 is not NULL or Other_Provider_Identifier_State_29 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 30, Other_Provider_Identifier_30,Other_Provider_Identifier_Type_Code_30,Other_Provider_Identifier_Issuer_30,Other_Provider_Identifier_State_30 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 30, Other_Provider_Identifier_30,Other_Provider_Identifier_Type_Code_30,Other_Provider_Identifier_Issuer_30,Other_Provider_Identifier_State_30 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_30 is not NULL or Other_Provider_Identifier_Type_Code_30 is not NULL or Other_Provider_Identifier_Issuer_30 is not NULL or Other_Provider_Identifier_State_30 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 31, Other_Provider_Identifier_31,Other_Provider_Identifier_Type_Code_31,Other_Provider_Identifier_Issuer_31,Other_Provider_Identifier_State_31 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 31, Other_Provider_Identifier_31,Other_Provider_Identifier_Type_Code_31,Other_Provider_Identifier_Issuer_31,Other_Provider_Identifier_State_31 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_31 is not NULL or Other_Provider_Identifier_Type_Code_31 is not NULL or Other_Provider_Identifier_Issuer_31 is not NULL or Other_Provider_Identifier_State_31 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 32, Other_Provider_Identifier_32,Other_Provider_Identifier_Type_Code_32,Other_Provider_Identifier_Issuer_32,Other_Provider_Identifier_State_32 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 32, Other_Provider_Identifier_32,Other_Provider_Identifier_Type_Code_32,Other_Provider_Identifier_Issuer_32,Other_Provider_Identifier_State_32 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_32 is not NULL or Other_Provider_Identifier_Type_Code_32 is not NULL or Other_Provider_Identifier_Issuer_32 is not NULL or Other_Provider_Identifier_State_32 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 33, Other_Provider_Identifier_33,Other_Provider_Identifier_Type_Code_33,Other_Provider_Identifier_Issuer_33,Other_Provider_Identifier_State_33 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 33, Other_Provider_Identifier_33,Other_Provider_Identifier_Type_Code_33,Other_Provider_Identifier_Issuer_33,Other_Provider_Identifier_State_33 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_33 is not NULL or Other_Provider_Identifier_Type_Code_33 is not NULL or Other_Provider_Identifier_Issuer_33 is not NULL or Other_Provider_Identifier_State_33 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 34, Other_Provider_Identifier_34,Other_Provider_Identifier_Type_Code_34,Other_Provider_Identifier_Issuer_34,Other_Provider_Identifier_State_34 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 34, Other_Provider_Identifier_34,Other_Provider_Identifier_Type_Code_34,Other_Provider_Identifier_Issuer_34,Other_Provider_Identifier_State_34 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_34 is not NULL or Other_Provider_Identifier_Type_Code_34 is not NULL or Other_Provider_Identifier_Issuer_34 is not NULL or Other_Provider_Identifier_State_34 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 35, Other_Provider_Identifier_35,Other_Provider_Identifier_Type_Code_35,Other_Provider_Identifier_Issuer_35,Other_Provider_Identifier_State_35 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 35, Other_Provider_Identifier_35,Other_Provider_Identifier_Type_Code_35,Other_Provider_Identifier_Issuer_35,Other_Provider_Identifier_State_35 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_35 is not NULL or Other_Provider_Identifier_Type_Code_35 is not NULL or Other_Provider_Identifier_Issuer_35 is not NULL or Other_Provider_Identifier_State_35 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 36, Other_Provider_Identifier_36,Other_Provider_Identifier_Type_Code_36,Other_Provider_Identifier_Issuer_36,Other_Provider_Identifier_State_36 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 36, Other_Provider_Identifier_36,Other_Provider_Identifier_Type_Code_36,Other_Provider_Identifier_Issuer_36,Other_Provider_Identifier_State_36 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_36 is not NULL or Other_Provider_Identifier_Type_Code_36 is not NULL or Other_Provider_Identifier_Issuer_36 is not NULL or Other_Provider_Identifier_State_36 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 37, Other_Provider_Identifier_37,Other_Provider_Identifier_Type_Code_37,Other_Provider_Identifier_Issuer_37,Other_Provider_Identifier_State_37 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 37, Other_Provider_Identifier_37,Other_Provider_Identifier_Type_Code_37,Other_Provider_Identifier_Issuer_37,Other_Provider_Identifier_State_37 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_37 is not NULL or Other_Provider_Identifier_Type_Code_37 is not NULL or Other_Provider_Identifier_Issuer_37 is not NULL or Other_Provider_Identifier_State_37 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 38, Other_Provider_Identifier_38,Other_Provider_Identifier_Type_Code_38,Other_Provider_Identifier_Issuer_38,Other_Provider_Identifier_State_38 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 38, Other_Provider_Identifier_38,Other_Provider_Identifier_Type_Code_38,Other_Provider_Identifier_Issuer_38,Other_Provider_Identifier_State_38 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_38 is not NULL or Other_Provider_Identifier_Type_Code_38 is not NULL or Other_Provider_Identifier_Issuer_38 is not NULL or Other_Provider_Identifier_State_38 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 39, Other_Provider_Identifier_39,Other_Provider_Identifier_Type_Code_39,Other_Provider_Identifier_Issuer_39,Other_Provider_Identifier_State_39 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 39, Other_Provider_Identifier_39,Other_Provider_Identifier_Type_Code_39,Other_Provider_Identifier_Issuer_39,Other_Provider_Identifier_State_39 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_39 is not NULL or Other_Provider_Identifier_Type_Code_39 is not NULL or Other_Provider_Identifier_Issuer_39 is not NULL or Other_Provider_Identifier_State_39 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 40, Other_Provider_Identifier_40,Other_Provider_Identifier_Type_Code_40,Other_Provider_Identifier_Issuer_40,Other_Provider_Identifier_State_40 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 40, Other_Provider_Identifier_40,Other_Provider_Identifier_Type_Code_40,Other_Provider_Identifier_Issuer_40,Other_Provider_Identifier_State_40 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_40 is not NULL or Other_Provider_Identifier_Type_Code_40 is not NULL or Other_Provider_Identifier_Issuer_40 is not NULL or Other_Provider_Identifier_State_40 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 41, Other_Provider_Identifier_41,Other_Provider_Identifier_Type_Code_41,Other_Provider_Identifier_Issuer_41,Other_Provider_Identifier_State_41 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 41, Other_Provider_Identifier_41,Other_Provider_Identifier_Type_Code_41,Other_Provider_Identifier_Issuer_41,Other_Provider_Identifier_State_41 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_41 is not NULL or Other_Provider_Identifier_Type_Code_41 is not NULL or Other_Provider_Identifier_Issuer_41 is not NULL or Other_Provider_Identifier_State_41 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 42, Other_Provider_Identifier_42,Other_Provider_Identifier_Type_Code_42,Other_Provider_Identifier_Issuer_42,Other_Provider_Identifier_State_42 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 42, Other_Provider_Identifier_42,Other_Provider_Identifier_Type_Code_42,Other_Provider_Identifier_Issuer_42,Other_Provider_Identifier_State_42 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_42 is not NULL or Other_Provider_Identifier_Type_Code_42 is not NULL or Other_Provider_Identifier_Issuer_42 is not NULL or Other_Provider_Identifier_State_42 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 43, Other_Provider_Identifier_43,Other_Provider_Identifier_Type_Code_43,Other_Provider_Identifier_Issuer_43,Other_Provider_Identifier_State_43 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 43, Other_Provider_Identifier_43,Other_Provider_Identifier_Type_Code_43,Other_Provider_Identifier_Issuer_43,Other_Provider_Identifier_State_43 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_43 is not NULL or Other_Provider_Identifier_Type_Code_43 is not NULL or Other_Provider_Identifier_Issuer_43 is not NULL or Other_Provider_Identifier_State_43 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 44, Other_Provider_Identifier_44,Other_Provider_Identifier_Type_Code_44,Other_Provider_Identifier_Issuer_44,Other_Provider_Identifier_State_44 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 44, Other_Provider_Identifier_44,Other_Provider_Identifier_Type_Code_44,Other_Provider_Identifier_Issuer_44,Other_Provider_Identifier_State_44 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_44 is not NULL or Other_Provider_Identifier_Type_Code_44 is not NULL or Other_Provider_Identifier_Issuer_44 is not NULL or Other_Provider_Identifier_State_44 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 45, Other_Provider_Identifier_45,Other_Provider_Identifier_Type_Code_45,Other_Provider_Identifier_Issuer_45,Other_Provider_Identifier_State_45 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 45, Other_Provider_Identifier_45,Other_Provider_Identifier_Type_Code_45,Other_Provider_Identifier_Issuer_45,Other_Provider_Identifier_State_45 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_45 is not NULL or Other_Provider_Identifier_Type_Code_45 is not NULL or Other_Provider_Identifier_Issuer_45 is not NULL or Other_Provider_Identifier_State_45 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 46, Other_Provider_Identifier_46,Other_Provider_Identifier_Type_Code_46,Other_Provider_Identifier_Issuer_46,Other_Provider_Identifier_State_46 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 46, Other_Provider_Identifier_46,Other_Provider_Identifier_Type_Code_46,Other_Provider_Identifier_Issuer_46,Other_Provider_Identifier_State_46 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_46 is not NULL or Other_Provider_Identifier_Type_Code_46 is not NULL or Other_Provider_Identifier_Issuer_46 is not NULL or Other_Provider_Identifier_State_46 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 47, Other_Provider_Identifier_47,Other_Provider_Identifier_Type_Code_47,Other_Provider_Identifier_Issuer_47,Other_Provider_Identifier_State_47 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 47, Other_Provider_Identifier_47,Other_Provider_Identifier_Type_Code_47,Other_Provider_Identifier_Issuer_47,Other_Provider_Identifier_State_47 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_47 is not NULL or Other_Provider_Identifier_Type_Code_47 is not NULL or Other_Provider_Identifier_Issuer_47 is not NULL or Other_Provider_Identifier_State_47 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 48, Other_Provider_Identifier_48,Other_Provider_Identifier_Type_Code_48,Other_Provider_Identifier_Issuer_48,Other_Provider_Identifier_State_48 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 48, Other_Provider_Identifier_48,Other_Provider_Identifier_Type_Code_48,Other_Provider_Identifier_Issuer_48,Other_Provider_Identifier_State_48 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_48 is not NULL or Other_Provider_Identifier_Type_Code_48 is not NULL or Other_Provider_Identifier_Issuer_48 is not NULL or Other_Provider_Identifier_State_48 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 49, Other_Provider_Identifier_49,Other_Provider_Identifier_Type_Code_49,Other_Provider_Identifier_Issuer_49,Other_Provider_Identifier_State_49 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 49, Other_Provider_Identifier_49,Other_Provider_Identifier_Type_Code_49,Other_Provider_Identifier_Issuer_49,Other_Provider_Identifier_State_49 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_49 is not NULL or Other_Provider_Identifier_Type_Code_49 is not NULL or Other_Provider_Identifier_Issuer_49 is not NULL or Other_Provider_Identifier_State_49 is not NULL;
 
-insert into other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
-    select npf.npi, 50, Other_Provider_Identifier_50,Other_Provider_Identifier_Type_Code_50,Other_Provider_Identifier_Issuer_50,Other_Provider_Identifier_State_50 from NPPES_flat npf
+insert into tmp_other_provider_identifiers (npi,sequence_id,Other_Provider_Identifier,Other_Provider_Identifier_Type_Code,Other_Provider_Identifier_Issuer,Other_Provider_Identifier_State)
+    select npf.npi, 50, Other_Provider_Identifier_50,Other_Provider_Identifier_Type_Code_50,Other_Provider_Identifier_Issuer_50,Other_Provider_Identifier_State_50 from tmp_NPPES_flat npf
 where Other_Provider_Identifier_50 is not NULL or Other_Provider_Identifier_Type_Code_50 is not NULL or Other_Provider_Identifier_Issuer_50 is not NULL or Other_Provider_Identifier_State_50 is not NULL;
 
 
-/* provider_licenses table associates a health care provider taxonomy with a license number */
-drop table if exists provider_licenses;
-create table provider_licenses (
+/* tmp_provider_licenses table associates a health care provider taxonomy with a license number */
+drop table if exists tmp_provider_licenses;
+create table tmp_provider_licenses (
     npi char(10),
     sequence_id integer,
     Healthcare_Provider_Taxonomy_Code VARCHAR(10),
@@ -969,70 +972,70 @@ create table provider_licenses (
 
 /* The taxonomy groups associated with a license are inserted into this table. The following inserts can be executed as a group */
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 1, Healthcare_Provider_Taxonomy_Code_1,Provider_License_Number_1,Provider_License_Number_State_Code_1,Healthcare_Provider_Primary_Taxonomy_Switch_1 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 1, Healthcare_Provider_Taxonomy_Code_1,Provider_License_Number_1,Provider_License_Number_State_Code_1,Healthcare_Provider_Primary_Taxonomy_Switch_1 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_1 is not NULL or Provider_License_Number_1 is not NULL or Provider_License_Number_State_Code_1 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_1 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 2, Healthcare_Provider_Taxonomy_Code_2,Provider_License_Number_2,Provider_License_Number_State_Code_2,Healthcare_Provider_Primary_Taxonomy_Switch_2 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 2, Healthcare_Provider_Taxonomy_Code_2,Provider_License_Number_2,Provider_License_Number_State_Code_2,Healthcare_Provider_Primary_Taxonomy_Switch_2 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_2 is not NULL or Provider_License_Number_2 is not NULL or Provider_License_Number_State_Code_2 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_2 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 3, Healthcare_Provider_Taxonomy_Code_3,Provider_License_Number_3,Provider_License_Number_State_Code_3,Healthcare_Provider_Primary_Taxonomy_Switch_3 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 3, Healthcare_Provider_Taxonomy_Code_3,Provider_License_Number_3,Provider_License_Number_State_Code_3,Healthcare_Provider_Primary_Taxonomy_Switch_3 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_3 is not NULL or Provider_License_Number_3 is not NULL or Provider_License_Number_State_Code_3 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_3 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 4, Healthcare_Provider_Taxonomy_Code_4,Provider_License_Number_4,Provider_License_Number_State_Code_4,Healthcare_Provider_Primary_Taxonomy_Switch_4 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 4, Healthcare_Provider_Taxonomy_Code_4,Provider_License_Number_4,Provider_License_Number_State_Code_4,Healthcare_Provider_Primary_Taxonomy_Switch_4 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_4 is not NULL or Provider_License_Number_4 is not NULL or Provider_License_Number_State_Code_4 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_4 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 5, Healthcare_Provider_Taxonomy_Code_5,Provider_License_Number_5,Provider_License_Number_State_Code_5,Healthcare_Provider_Primary_Taxonomy_Switch_5 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 5, Healthcare_Provider_Taxonomy_Code_5,Provider_License_Number_5,Provider_License_Number_State_Code_5,Healthcare_Provider_Primary_Taxonomy_Switch_5 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_5 is not NULL or Provider_License_Number_5 is not NULL or Provider_License_Number_State_Code_5 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_5 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 6, Healthcare_Provider_Taxonomy_Code_6,Provider_License_Number_6,Provider_License_Number_State_Code_6,Healthcare_Provider_Primary_Taxonomy_Switch_6 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 6, Healthcare_Provider_Taxonomy_Code_6,Provider_License_Number_6,Provider_License_Number_State_Code_6,Healthcare_Provider_Primary_Taxonomy_Switch_6 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_6 is not NULL or Provider_License_Number_6 is not NULL or Provider_License_Number_State_Code_6 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_6 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 7, Healthcare_Provider_Taxonomy_Code_7,Provider_License_Number_7,Provider_License_Number_State_Code_7,Healthcare_Provider_Primary_Taxonomy_Switch_7 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 7, Healthcare_Provider_Taxonomy_Code_7,Provider_License_Number_7,Provider_License_Number_State_Code_7,Healthcare_Provider_Primary_Taxonomy_Switch_7 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_7 is not NULL or Provider_License_Number_7 is not NULL or Provider_License_Number_State_Code_7 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_7 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 8, Healthcare_Provider_Taxonomy_Code_8,Provider_License_Number_8,Provider_License_Number_State_Code_8,Healthcare_Provider_Primary_Taxonomy_Switch_8 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 8, Healthcare_Provider_Taxonomy_Code_8,Provider_License_Number_8,Provider_License_Number_State_Code_8,Healthcare_Provider_Primary_Taxonomy_Switch_8 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_8 is not NULL or Provider_License_Number_8 is not NULL or Provider_License_Number_State_Code_8 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_8 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 9, Healthcare_Provider_Taxonomy_Code_9,Provider_License_Number_9,Provider_License_Number_State_Code_9,Healthcare_Provider_Primary_Taxonomy_Switch_9 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 9, Healthcare_Provider_Taxonomy_Code_9,Provider_License_Number_9,Provider_License_Number_State_Code_9,Healthcare_Provider_Primary_Taxonomy_Switch_9 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_9 is not NULL or Provider_License_Number_9 is not NULL or Provider_License_Number_State_Code_9 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_9 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 10, Healthcare_Provider_Taxonomy_Code_10,Provider_License_Number_10,Provider_License_Number_State_Code_10,Healthcare_Provider_Primary_Taxonomy_Switch_10 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 10, Healthcare_Provider_Taxonomy_Code_10,Provider_License_Number_10,Provider_License_Number_State_Code_10,Healthcare_Provider_Primary_Taxonomy_Switch_10 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_10 is not NULL or Provider_License_Number_10 is not NULL or Provider_License_Number_State_Code_10 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_10 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 11, Healthcare_Provider_Taxonomy_Code_11,Provider_License_Number_11,Provider_License_Number_State_Code_11,Healthcare_Provider_Primary_Taxonomy_Switch_11 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 11, Healthcare_Provider_Taxonomy_Code_11,Provider_License_Number_11,Provider_License_Number_State_Code_11,Healthcare_Provider_Primary_Taxonomy_Switch_11 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_11 is not NULL or Provider_License_Number_11 is not NULL or Provider_License_Number_State_Code_11 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_11 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 12, Healthcare_Provider_Taxonomy_Code_12,Provider_License_Number_12,Provider_License_Number_State_Code_12,Healthcare_Provider_Primary_Taxonomy_Switch_12 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 12, Healthcare_Provider_Taxonomy_Code_12,Provider_License_Number_12,Provider_License_Number_State_Code_12,Healthcare_Provider_Primary_Taxonomy_Switch_12 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_12 is not NULL or Provider_License_Number_12 is not NULL or Provider_License_Number_State_Code_12 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_12 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 13, Healthcare_Provider_Taxonomy_Code_13,Provider_License_Number_13,Provider_License_Number_State_Code_13,Healthcare_Provider_Primary_Taxonomy_Switch_13 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 13, Healthcare_Provider_Taxonomy_Code_13,Provider_License_Number_13,Provider_License_Number_State_Code_13,Healthcare_Provider_Primary_Taxonomy_Switch_13 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_13 is not NULL or Provider_License_Number_13 is not NULL or Provider_License_Number_State_Code_13 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_13 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 14, Healthcare_Provider_Taxonomy_Code_14,Provider_License_Number_14,Provider_License_Number_State_Code_14,Healthcare_Provider_Primary_Taxonomy_Switch_14 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 14, Healthcare_Provider_Taxonomy_Code_14,Provider_License_Number_14,Provider_License_Number_State_Code_14,Healthcare_Provider_Primary_Taxonomy_Switch_14 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_14 is not NULL or Provider_License_Number_14 is not NULL or Provider_License_Number_State_Code_14 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_14 is not NULL;
 
-insert into provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
-    select npf.npi, 15, Healthcare_Provider_Taxonomy_Code_15,Provider_License_Number_15,Provider_License_Number_State_Code_15,Healthcare_Provider_Primary_Taxonomy_Switch_15 from NPPES_flat npf
+insert into tmp_provider_licenses (npi,sequence_id,Healthcare_Provider_Taxonomy_Code,Provider_License_Number,Provider_License_Number_State_Code,Healthcare_Provider_Primary_Taxonomy_Switch)
+    select npf.npi, 15, Healthcare_Provider_Taxonomy_Code_15,Provider_License_Number_15,Provider_License_Number_State_Code_15,Healthcare_Provider_Primary_Taxonomy_Switch_15 from tmp_NPPES_flat npf
 where Healthcare_Provider_Taxonomy_Code_15 is not NULL or Provider_License_Number_15 is not NULL or Provider_License_Number_State_Code_15 is not NULL or Healthcare_Provider_Primary_Taxonomy_Switch_15 is not NULL;
 
 
 /* The header table is a slimmed down table from the original flat table.  */
-drop table if exists NPPES_header;
-    create table NPPES_header (
+drop table if exists tmp_NPPES_header;
+    create table tmp_NPPES_header (
     NPI CHAR(10),
     Entity_Type_Code CHAR(1),
     Replacement_NPI CHAR(10),
@@ -1088,668 +1091,668 @@ drop table if exists NPPES_header;
     Authorized_Official_Name_Suffix_Text VARCHAR(5),
     Authorized_Official_Credential_Text VARCHAR(20));
 
-/* Load data into the NPPES_header table */
+/* Load data into the tmp_NPPES_header table */
 
-insert into NPPES_header (NPI,Entity_Type_Code,Replacement_NPI,Employer_Identification_Number_EIN,Provider_Organization_Name_Legal_Business_Name,Provider_Last_Name_Legal_Name,Provider_First_Name,Provider_Middle_Name,Provider_Name_Prefix_Text,Provider_Name_Suffix_Text,Provider_Credential_Text,Provider_Other_Organization_Name,Provider_Other_Organization_Name_Type_Code,Provider_Other_Last_Name,Provider_Other_First_Name,Provider_Other_Middle_Name,Provider_Other_Name_Prefix_Text,Provider_Other_Name_Suffix_Text,Provider_Other_Credential_Text,Provider_Other_Last_Name_Type_Code,Provider_First_Line_Business_Mailing_Address,Provider_Second_Line_Business_Mailing_Address,Provider_Business_Mailing_Address_City_Name,Provider_Business_Mailing_Address_State_Name,Provider_Business_Mailing_Address_Postal_Code,Provider_Business_Mailing_Address_Country_Cod,Provider_Business_Mailing_Address_Telephone_Number,Provider_Business_Mailing_Address_Fax_Number,Provider_First_Line_Business_Practice_Location_Address,Provider_Second_Line_Business_Practice_Location_Address,Provider_Business_Practice_Location_Address_City_Name,Provider_Business_Practice_Location_Address_State_Name,Provider_Business_Practice_Location_Address_Postal_Code,Provider_Business_Practice_Location_Address_Country_Cod,Provider_Business_Practice_Location_Address_Telephone_Number,Provider_Business_Practice_Location_Address_Fax_Number,Provider_Enumeration_Date,Last_Update_Date,NPI_Deactivation_Reason_Code,NPI_Deactivation_Date,NPI_Reactivation_Date,Provider_Gender_Code,Authorized_Official_Last_Name,Authorized_Official_First_Name,Authorized_Official_Middle_Name,Authorized_Official_Title_or_Position,Authorized_Official_Telephone_Number,Is_Sole_Proprietor,Is_Organization_Subpart,Parent_Organization_LBN,Parent_Organization_TIN,Authorized_Official_Name_Prefix_Text,Authorized_Official_Name_Suffix_Text,Authorized_Official_Credential_Text)
-    select NPI,Entity_Type_Code,Replacement_NPI,Employer_Identification_Number_EIN,Provider_Organization_Name_Legal_Business_Name,Provider_Last_Name_Legal_Name,Provider_First_Name,Provider_Middle_Name,Provider_Name_Prefix_Text,Provider_Name_Suffix_Text,Provider_Credential_Text,Provider_Other_Organization_Name,Provider_Other_Organization_Name_Type_Code,Provider_Other_Last_Name,Provider_Other_First_Name,Provider_Other_Middle_Name,Provider_Other_Name_Prefix_Text,Provider_Other_Name_Suffix_Text,Provider_Other_Credential_Text,Provider_Other_Last_Name_Type_Code,Provider_First_Line_Business_Mailing_Address,Provider_Second_Line_Business_Mailing_Address,Provider_Business_Mailing_Address_City_Name,Provider_Business_Mailing_Address_State_Name,Provider_Business_Mailing_Address_Postal_Code,Provider_Business_Mailing_Address_Country_Cod,Provider_Business_Mailing_Address_Telephone_Number,Provider_Business_Mailing_Address_Fax_Number,Provider_First_Line_Business_Practice_Location_Address,Provider_Second_Line_Business_Practice_Location_Address,Provider_Business_Practice_Location_Address_City_Name,Provider_Business_Practice_Location_Address_State_Name,Provider_Business_Practice_Location_Address_Postal_Code,Provider_Business_Practice_Location_Address_Country_Cod,Provider_Business_Practice_Location_Address_Telephone_Number,Provider_Business_Practice_Location_Address_Fax_Number,Provider_Enumeration_Date,Last_Update_Date,NPI_Deactivation_Reason_Code,NPI_Deactivation_Date,NPI_Reactivation_Date,Provider_Gender_Code,Authorized_Official_Last_Name,Authorized_Official_First_Name,Authorized_Official_Middle_Name,Authorized_Official_Title_or_Position,Authorized_Official_Telephone_Number,Is_Sole_Proprietor,Is_Organization_Subpart,Parent_Organization_LBN,Parent_Organization_TIN,Authorized_Official_Name_Prefix_Text,Authorized_Official_Name_Suffix_Text,Authorized_Official_Credential_Text from NPPES_flat;
+insert into tmp_NPPES_header (NPI,Entity_Type_Code,Replacement_NPI,Employer_Identification_Number_EIN,Provider_Organization_Name_Legal_Business_Name,Provider_Last_Name_Legal_Name,Provider_First_Name,Provider_Middle_Name,Provider_Name_Prefix_Text,Provider_Name_Suffix_Text,Provider_Credential_Text,Provider_Other_Organization_Name,Provider_Other_Organization_Name_Type_Code,Provider_Other_Last_Name,Provider_Other_First_Name,Provider_Other_Middle_Name,Provider_Other_Name_Prefix_Text,Provider_Other_Name_Suffix_Text,Provider_Other_Credential_Text,Provider_Other_Last_Name_Type_Code,Provider_First_Line_Business_Mailing_Address,Provider_Second_Line_Business_Mailing_Address,Provider_Business_Mailing_Address_City_Name,Provider_Business_Mailing_Address_State_Name,Provider_Business_Mailing_Address_Postal_Code,Provider_Business_Mailing_Address_Country_Cod,Provider_Business_Mailing_Address_Telephone_Number,Provider_Business_Mailing_Address_Fax_Number,Provider_First_Line_Business_Practice_Location_Address,Provider_Second_Line_Business_Practice_Location_Address,Provider_Business_Practice_Location_Address_City_Name,Provider_Business_Practice_Location_Address_State_Name,Provider_Business_Practice_Location_Address_Postal_Code,Provider_Business_Practice_Location_Address_Country_Cod,Provider_Business_Practice_Location_Address_Telephone_Number,Provider_Business_Practice_Location_Address_Fax_Number,Provider_Enumeration_Date,Last_Update_Date,NPI_Deactivation_Reason_Code,NPI_Deactivation_Date,NPI_Reactivation_Date,Provider_Gender_Code,Authorized_Official_Last_Name,Authorized_Official_First_Name,Authorized_Official_Middle_Name,Authorized_Official_Title_or_Position,Authorized_Official_Telephone_Number,Is_Sole_Proprietor,Is_Organization_Subpart,Parent_Organization_LBN,Parent_Organization_TIN,Authorized_Official_Name_Prefix_Text,Authorized_Official_Name_Suffix_Text,Authorized_Official_Credential_Text)
+    select NPI,Entity_Type_Code,Replacement_NPI,Employer_Identification_Number_EIN,Provider_Organization_Name_Legal_Business_Name,Provider_Last_Name_Legal_Name,Provider_First_Name,Provider_Middle_Name,Provider_Name_Prefix_Text,Provider_Name_Suffix_Text,Provider_Credential_Text,Provider_Other_Organization_Name,Provider_Other_Organization_Name_Type_Code,Provider_Other_Last_Name,Provider_Other_First_Name,Provider_Other_Middle_Name,Provider_Other_Name_Prefix_Text,Provider_Other_Name_Suffix_Text,Provider_Other_Credential_Text,Provider_Other_Last_Name_Type_Code,Provider_First_Line_Business_Mailing_Address,Provider_Second_Line_Business_Mailing_Address,Provider_Business_Mailing_Address_City_Name,Provider_Business_Mailing_Address_State_Name,Provider_Business_Mailing_Address_Postal_Code,Provider_Business_Mailing_Address_Country_Cod,Provider_Business_Mailing_Address_Telephone_Number,Provider_Business_Mailing_Address_Fax_Number,Provider_First_Line_Business_Practice_Location_Address,Provider_Second_Line_Business_Practice_Location_Address,Provider_Business_Practice_Location_Address_City_Name,Provider_Business_Practice_Location_Address_State_Name,Provider_Business_Practice_Location_Address_Postal_Code,Provider_Business_Practice_Location_Address_Country_Cod,Provider_Business_Practice_Location_Address_Telephone_Number,Provider_Business_Practice_Location_Address_Fax_Number,Provider_Enumeration_Date,Last_Update_Date,NPI_Deactivation_Reason_Code,NPI_Deactivation_Date,NPI_Reactivation_Date,Provider_Gender_Code,Authorized_Official_Last_Name,Authorized_Official_First_Name,Authorized_Official_Middle_Name,Authorized_Official_Title_or_Position,Authorized_Official_Telephone_Number,Is_Sole_Proprietor,Is_Organization_Subpart,Parent_Organization_LBN,Parent_Organization_TIN,Authorized_Official_Name_Prefix_Text,Authorized_Official_Name_Suffix_Text,Authorized_Official_Credential_Text from tmp_NPPES_flat;
 
 /* Holds the provider processed taxonomies */
-drop table if exists healthcare_provider_taxonomy_processed;
-    create table  healthcare_provider_taxonomy_processed
+drop table if exists tmp_healthcare_provider_taxonomy_processed;
+    create table  tmp_healthcare_provider_taxonomy_processed
         (npi char(11),
         depth integer,
          flattened_taxonomy_string varchar(200)
     );
 
 /* Add binary variables for provider type. The alter table statements can be executed by group */
-alter table healthcare_provider_taxonomy_processed add is_advanced_practice_midwife boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_advanced_practice_midwife boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_allergy_and_immunology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_allergy_and_immunology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_ambulance boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_ambulance boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_anesthesiologist_assistant boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_anesthesiologist_assistant boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_anesthesiology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_anesthesiology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_assistant_podiatric boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_assistant_podiatric boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_assisted_living_facility boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_assisted_living_facility boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_behavioral_analyst boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_behavioral_analyst boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_chiropractor boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_chiropractor boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_christian_science_sanitorium boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_christian_science_sanitorium boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_clinic_center boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_clinic_center boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_clinical_nurse_specialist boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_clinical_nurse_specialist boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_clinical_pharmacology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_clinical_pharmacology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_colon_and_rectal_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_colon_and_rectal_surgery boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_counselor boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_counselor boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_dentist boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_dentist boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_denturist boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_denturist boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_dermatology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_dermatology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_durable_medical_equipment_medical_supplies boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_durable_medical_equipment_medical_supplies boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_electrodiagnostic_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_electrodiagnostic_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_emergency_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_emergency_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_family_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_family_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_general_acute_care_hospital boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_general_acute_care_hospital boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_general_practice boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_general_practice boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_genetic_counselor_ms boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_genetic_counselor_ms boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_hospitalist boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_hospitalist boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_internal_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_internal_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_legal_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_legal_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_marriage_and_family_therapist boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_marriage_and_family_therapist boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_massage_therapist boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_massage_therapist boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_medical_genetics boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_medical_genetics boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_medical_genetics_phd_medical_genetics boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_medical_genetics_phd_medical_genetics boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_military_hospital boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_military_hospital boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_multispecialty boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_multispecialty boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_neurological_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_neurological_surgery boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_neuromusculoskeletal_medicine_and_omm boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_neuromusculoskeletal_medicine_and_omm boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_nuclear_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_nuclear_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_nurse_anesthetist_certified_registered boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_nurse_anesthetist_certified_registered boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_nurse_practitioner boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_nurse_practitioner boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_obstetrics_and_gynecology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_obstetrics_and_gynecology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_ophthalmology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_ophthalmology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_optometrist boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_optometrist boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_orthopaedic_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_orthopaedic_surgery boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_otolaryngology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_otolaryngology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_pain_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_pain_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_pathology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_pathology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_pediatrics boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_pediatrics boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_pharmacist boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_pharmacist boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_pharmacy boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_pharmacy boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_pharmacy_technician boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_pharmacy_technician boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_physical_medicine_and_rehabilitation boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_physical_medicine_and_rehabilitation boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_physical_therapist boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_physical_therapist boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_physician_assistant boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_physician_assistant boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_plastic_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_plastic_surgery boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_podiatrist boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_podiatrist boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_preventive_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_preventive_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_psychiatric_hospital boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_psychiatric_hospital boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_psychiatric_unit boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_psychiatric_unit boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_psychiatry_and_neurology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_psychiatry_and_neurology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_psychoanalyst boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_psychoanalyst boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_psychologist boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_psychologist boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_radiology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_radiology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_registered_nurse boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_registered_nurse boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_rehabilitation_hospital boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_rehabilitation_hospital boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_religious_nonmedical_health_care_institution boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_religious_nonmedical_health_care_institution boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_single_specialty boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_single_specialty boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_social_worker boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_social_worker boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_special_hospital boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_special_hospital boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_surgery boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_thoracic_surgery_cardiothoracic_vascular_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_thoracic_surgery_cardiothoracic_vascular_surgery boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_transplant_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_transplant_surgery boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_urology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_urology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_behavioral_health_and_social_service_providers boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_behavioral_health_and_social_service_providers boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_hospital boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_hospital boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_laboratory boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_laboratory boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_managed_care_organization boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_managed_care_organization boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_nursing_care_facility boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_nursing_care_facility boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_residential_treatment_facility boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_residential_treatment_facility boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_student boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_student boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_supplier boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_supplier boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_physician boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_physician boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_addiction_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_addiction_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_bariatric_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_bariatric_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_body_imaging boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_body_imaging boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_cardiovascular_disease boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_cardiovascular_disease boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_clinical_and_laboratory_immunology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_clinical_and_laboratory_immunology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_clinical_biochemical_genetics boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_clinical_biochemical_genetics boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_clinical_cardiac_electrophysiology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_clinical_cardiac_electrophysiology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_clinical_cytogenetic boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_clinical_cytogenetic boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_clinical_genetics_md boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_clinical_genetics_md boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_clinical_molecular_genetics boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_clinical_molecular_genetics boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_critical_care_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_critical_care_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_dermatopathology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_dermatopathology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_diagnostic_neuroimaging boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_diagnostic_neuroimaging boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_diagnostic_radiology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_diagnostic_radiology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_diagnostic_ultrasound boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_diagnostic_ultrasound boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_endocrinology_diabetes_and_metabolism boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_endocrinology_diabetes_and_metabolism boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_endodontics boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_endodontics boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_gastroenterology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_gastroenterology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_geriatric_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_geriatric_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_hematology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_hematology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_hematology_and_oncology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_hematology_and_oncology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_hepatology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_hepatology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_hospice_and_palliative_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_hospice_and_palliative_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_hypertension_specialist boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_hypertension_specialist boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_infectious_disease boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_infectious_disease boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_interventional_cardiology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_interventional_cardiology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_interventional_pain_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_interventional_pain_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_mohsmicrographic_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_mohsmicrographic_surgery boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_magnetic_resonance_imaging_mri boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_magnetic_resonance_imaging_mri boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_medical_oncology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_medical_oncology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_molecular_genetic_pathology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_molecular_genetic_pathology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_nephrology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_nephrology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_neurology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_neurology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_neuroradiology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_neuroradiology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_nuclear_radiology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_nuclear_radiology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_oral_and_maxillofacial_pathology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_oral_and_maxillofacial_pathology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_oral_and_maxillofacial_radiology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_oral_and_maxillofacial_radiology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_oral_and_maxillofacial_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_oral_and_maxillofacial_surgery boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_orthodontics_and_dentofacial_orthopedics boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_orthodontics_and_dentofacial_orthopedics boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_pediatric_dentistry boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_pediatric_dentistry boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_pediatric_radiology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_pediatric_radiology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_pediatric_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_pediatric_surgery boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_periodontics boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_periodontics boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_phd_medical_genetics boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_phd_medical_genetics boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_plastic_and_reconstructive_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_plastic_and_reconstructive_surgery boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_prosthodontics boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_prosthodontics boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_psychiatry boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_psychiatry boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_pulmonary_disease boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_pulmonary_disease boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_radiation_oncology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_radiation_oncology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_radiological_physics boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_radiological_physics boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_rheumatology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_rheumatology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_sleep_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_sleep_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_sports_medicine boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_sports_medicine boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_surgery_of_the_hand boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_surgery_of_the_hand boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_surgical_critical_care boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_surgical_critical_care boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_surgical_oncology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_surgical_oncology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_therapeutic_radiology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_therapeutic_radiology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_transplant_hepatology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_transplant_hepatology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_trauma_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_trauma_surgery boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_vascular_and_interventional_radiology boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_vascular_and_interventional_radiology boolean;
 
-alter table healthcare_provider_taxonomy_processed add is_vascular_surgery boolean;
+alter table tmp_healthcare_provider_taxonomy_processed add is_vascular_surgery boolean;
 
 /* Start creating the flat taxonomy string */
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 1, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_2 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_2 is null
 and Healthcare_Provider_Taxonomy_Code_1 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 2, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_3 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_3 is null
 and Healthcare_Provider_Taxonomy_Code_2 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 3, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_4 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_4 is null
 and Healthcare_Provider_Taxonomy_Code_3 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 4, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_5 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_5 is null
 and Healthcare_Provider_Taxonomy_Code_4 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 5, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|','|', Healthcare_Provider_Taxonomy_Code_5, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_6 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_6 is null
 and Healthcare_Provider_Taxonomy_Code_5 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 6, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|','|', Healthcare_Provider_Taxonomy_Code_5, '|','|', Healthcare_Provider_Taxonomy_Code_6, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_7 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_7 is null
 and Healthcare_Provider_Taxonomy_Code_6 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 7, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|','|', Healthcare_Provider_Taxonomy_Code_5, '|','|', Healthcare_Provider_Taxonomy_Code_6, '|','|', Healthcare_Provider_Taxonomy_Code_7, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_8 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_8 is null
 and Healthcare_Provider_Taxonomy_Code_7 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 8, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|','|', Healthcare_Provider_Taxonomy_Code_5, '|','|', Healthcare_Provider_Taxonomy_Code_6, '|','|', Healthcare_Provider_Taxonomy_Code_7, '|','|', Healthcare_Provider_Taxonomy_Code_8, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_9 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_9 is null
 and Healthcare_Provider_Taxonomy_Code_8 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 9, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|','|', Healthcare_Provider_Taxonomy_Code_5, '|','|', Healthcare_Provider_Taxonomy_Code_6, '|','|', Healthcare_Provider_Taxonomy_Code_7, '|','|', Healthcare_Provider_Taxonomy_Code_8, '|','|', Healthcare_Provider_Taxonomy_Code_9, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_10 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_10 is null
 and Healthcare_Provider_Taxonomy_Code_9 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 10, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|','|', Healthcare_Provider_Taxonomy_Code_5, '|','|', Healthcare_Provider_Taxonomy_Code_6, '|','|', Healthcare_Provider_Taxonomy_Code_7, '|','|', Healthcare_Provider_Taxonomy_Code_8, '|','|', Healthcare_Provider_Taxonomy_Code_9, '|','|', Healthcare_Provider_Taxonomy_Code_10, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_11 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_11 is null
 and Healthcare_Provider_Taxonomy_Code_10 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 11, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|','|', Healthcare_Provider_Taxonomy_Code_5, '|','|', Healthcare_Provider_Taxonomy_Code_6, '|','|', Healthcare_Provider_Taxonomy_Code_7, '|','|', Healthcare_Provider_Taxonomy_Code_8, '|','|', Healthcare_Provider_Taxonomy_Code_9, '|','|', Healthcare_Provider_Taxonomy_Code_10, '|','|', Healthcare_Provider_Taxonomy_Code_11, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_12 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_12 is null
 and Healthcare_Provider_Taxonomy_Code_11 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 12, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|','|', Healthcare_Provider_Taxonomy_Code_5, '|','|', Healthcare_Provider_Taxonomy_Code_6, '|','|', Healthcare_Provider_Taxonomy_Code_7, '|','|', Healthcare_Provider_Taxonomy_Code_8, '|','|', Healthcare_Provider_Taxonomy_Code_9, '|','|', Healthcare_Provider_Taxonomy_Code_10, '|','|', Healthcare_Provider_Taxonomy_Code_11, '|','|', Healthcare_Provider_Taxonomy_Code_12, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_13 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_13 is null
 and Healthcare_Provider_Taxonomy_Code_12 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 13, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|','|', Healthcare_Provider_Taxonomy_Code_5, '|','|', Healthcare_Provider_Taxonomy_Code_6, '|','|', Healthcare_Provider_Taxonomy_Code_7, '|','|', Healthcare_Provider_Taxonomy_Code_8, '|','|', Healthcare_Provider_Taxonomy_Code_9, '|','|', Healthcare_Provider_Taxonomy_Code_10, '|','|', Healthcare_Provider_Taxonomy_Code_11, '|','|', Healthcare_Provider_Taxonomy_Code_12, '|','|', Healthcare_Provider_Taxonomy_Code_13, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_14 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_14 is null
 and Healthcare_Provider_Taxonomy_Code_13 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 14, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|','|', Healthcare_Provider_Taxonomy_Code_5, '|','|', Healthcare_Provider_Taxonomy_Code_6, '|','|', Healthcare_Provider_Taxonomy_Code_7, '|','|', Healthcare_Provider_Taxonomy_Code_8, '|','|', Healthcare_Provider_Taxonomy_Code_9, '|','|', Healthcare_Provider_Taxonomy_Code_10, '|','|', Healthcare_Provider_Taxonomy_Code_11, '|','|', Healthcare_Provider_Taxonomy_Code_12, '|','|', Healthcare_Provider_Taxonomy_Code_13, '|','|', Healthcare_Provider_Taxonomy_Code_14, '|') as taxonomy_string
-from nppes_flat nf where Healthcare_Provider_Taxonomy_Code_15 is null
+from tmp_NPPES_flat nf where Healthcare_Provider_Taxonomy_Code_15 is null
 and Healthcare_Provider_Taxonomy_Code_14 is not null;
 
-insert into healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
+insert into tmp_healthcare_provider_taxonomy_processed (npi, depth, flattened_taxonomy_string)
  select nf.npi, 15, concat('|', Healthcare_Provider_Taxonomy_Code_1, '|','|', Healthcare_Provider_Taxonomy_Code_2, '|','|', Healthcare_Provider_Taxonomy_Code_3, '|','|', Healthcare_Provider_Taxonomy_Code_4, '|','|', Healthcare_Provider_Taxonomy_Code_5, '|','|', Healthcare_Provider_Taxonomy_Code_6, '|','|', Healthcare_Provider_Taxonomy_Code_7, '|','|', Healthcare_Provider_Taxonomy_Code_8, '|','|', Healthcare_Provider_Taxonomy_Code_9, '|','|', Healthcare_Provider_Taxonomy_Code_10, '|','|', Healthcare_Provider_Taxonomy_Code_11, '|','|', Healthcare_Provider_Taxonomy_Code_12, '|','|', Healthcare_Provider_Taxonomy_Code_13, '|','|', Healthcare_Provider_Taxonomy_Code_14, '|','|', Healthcare_Provider_Taxonomy_Code_15, '|') as taxonomy_string
-from nppes_flat nf where  Healthcare_Provider_Taxonomy_Code_1 is not null and Healthcare_Provider_Taxonomy_Code_2 is not null and Healthcare_Provider_Taxonomy_Code_3 is not null and Healthcare_Provider_Taxonomy_Code_4 is not null and Healthcare_Provider_Taxonomy_Code_5 is not null and Healthcare_Provider_Taxonomy_Code_6 is not null and Healthcare_Provider_Taxonomy_Code_7 is not null and Healthcare_Provider_Taxonomy_Code_8 is not null and Healthcare_Provider_Taxonomy_Code_9 is not null and Healthcare_Provider_Taxonomy_Code_10 is not null and Healthcare_Provider_Taxonomy_Code_11 is not null and Healthcare_Provider_Taxonomy_Code_12 is not null and Healthcare_Provider_Taxonomy_Code_13 is not null and Healthcare_Provider_Taxonomy_Code_14 is not null and Healthcare_Provider_Taxonomy_Code_15 is not null;
+from tmp_NPPES_flat nf where  Healthcare_Provider_Taxonomy_Code_1 is not null and Healthcare_Provider_Taxonomy_Code_2 is not null and Healthcare_Provider_Taxonomy_Code_3 is not null and Healthcare_Provider_Taxonomy_Code_4 is not null and Healthcare_Provider_Taxonomy_Code_5 is not null and Healthcare_Provider_Taxonomy_Code_6 is not null and Healthcare_Provider_Taxonomy_Code_7 is not null and Healthcare_Provider_Taxonomy_Code_8 is not null and Healthcare_Provider_Taxonomy_Code_9 is not null and Healthcare_Provider_Taxonomy_Code_10 is not null and Healthcare_Provider_Taxonomy_Code_11 is not null and Healthcare_Provider_Taxonomy_Code_12 is not null and Healthcare_Provider_Taxonomy_Code_13 is not null and Healthcare_Provider_Taxonomy_Code_14 is not null and Healthcare_Provider_Taxonomy_Code_15 is not null;
 
 /* Update the provider taxonomies */
-update healthcare_provider_taxonomy_processed set is_advanced_practice_midwife = case when  flattened_taxonomy_string like '%367A00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_advanced_practice_midwife = case when  flattened_taxonomy_string like '%367A00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_allergy_and_immunology = case when  flattened_taxonomy_string like '%207K00000X%' or flattened_taxonomy_string like '%207KA0200X%' or flattened_taxonomy_string like '%207KI0005X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_allergy_and_immunology = case when  flattened_taxonomy_string like '%207K00000X%' or flattened_taxonomy_string like '%207KA0200X%' or flattened_taxonomy_string like '%207KI0005X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_ambulance = case when  flattened_taxonomy_string like '%3416A0800X%' or flattened_taxonomy_string like '%3416L0300X%' or flattened_taxonomy_string like '%3416S0300X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_ambulance = case when  flattened_taxonomy_string like '%3416A0800X%' or flattened_taxonomy_string like '%3416L0300X%' or flattened_taxonomy_string like '%3416S0300X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_anesthesiologist_assistant = case when  flattened_taxonomy_string like '%367H00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_anesthesiologist_assistant = case when  flattened_taxonomy_string like '%367H00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_anesthesiology = case when  flattened_taxonomy_string like '%207L00000X%' or flattened_taxonomy_string like '%207LA0401X%' or flattened_taxonomy_string like '%207LC0200X%' or flattened_taxonomy_string like '%207LH0002X%' or flattened_taxonomy_string like '%207LP2900X%' or flattened_taxonomy_string like '%207LP3000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_anesthesiology = case when  flattened_taxonomy_string like '%207L00000X%' or flattened_taxonomy_string like '%207LA0401X%' or flattened_taxonomy_string like '%207LC0200X%' or flattened_taxonomy_string like '%207LH0002X%' or flattened_taxonomy_string like '%207LP2900X%' or flattened_taxonomy_string like '%207LP3000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_assistant_podiatric = case when  flattened_taxonomy_string like '%211D00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_assistant_podiatric = case when  flattened_taxonomy_string like '%211D00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_assisted_living_facility = case when  flattened_taxonomy_string like '%310400000X%' or flattened_taxonomy_string like '%3104A0625X%' or flattened_taxonomy_string like '%3104A0630X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_assisted_living_facility = case when  flattened_taxonomy_string like '%310400000X%' or flattened_taxonomy_string like '%3104A0625X%' or flattened_taxonomy_string like '%3104A0630X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_behavioral_analyst = case when  flattened_taxonomy_string like '%103K00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_behavioral_analyst = case when  flattened_taxonomy_string like '%103K00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_chiropractor = case when  flattened_taxonomy_string like '%111N00000X%' or flattened_taxonomy_string like '%111NI0013X%' or flattened_taxonomy_string like '%111NI0900X%' or flattened_taxonomy_string like '%111NN0400X%' or flattened_taxonomy_string like '%111NN1001X%' or flattened_taxonomy_string like '%111NP0017X%' or flattened_taxonomy_string like '%111NR0200X%' or flattened_taxonomy_string like '%111NR0400X%' or flattened_taxonomy_string like '%111NS0005X%' or flattened_taxonomy_string like '%111NT0100X%' or flattened_taxonomy_string like '%111NX0100X%' or flattened_taxonomy_string like '%111NX0800X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_chiropractor = case when  flattened_taxonomy_string like '%111N00000X%' or flattened_taxonomy_string like '%111NI0013X%' or flattened_taxonomy_string like '%111NI0900X%' or flattened_taxonomy_string like '%111NN0400X%' or flattened_taxonomy_string like '%111NN1001X%' or flattened_taxonomy_string like '%111NP0017X%' or flattened_taxonomy_string like '%111NR0200X%' or flattened_taxonomy_string like '%111NR0400X%' or flattened_taxonomy_string like '%111NS0005X%' or flattened_taxonomy_string like '%111NT0100X%' or flattened_taxonomy_string like '%111NX0100X%' or flattened_taxonomy_string like '%111NX0800X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_christian_science_sanitorium = case when  flattened_taxonomy_string like '%287300000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_christian_science_sanitorium = case when  flattened_taxonomy_string like '%287300000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_clinic_center = case when  flattened_taxonomy_string like '%261Q00000X%' or flattened_taxonomy_string like '%261QA0005X%' or flattened_taxonomy_string like '%261QA0006X%' or flattened_taxonomy_string like '%261QA0600X%' or flattened_taxonomy_string like '%261QA0900X%' or flattened_taxonomy_string like '%261QA1903X%' or flattened_taxonomy_string like '%261QA3000X%' or flattened_taxonomy_string like '%261QB0400X%' or flattened_taxonomy_string like '%261QC0050X%' or flattened_taxonomy_string like '%261QC1500X%' or flattened_taxonomy_string like '%261QC1800X%' or flattened_taxonomy_string like '%261QD0000X%' or flattened_taxonomy_string like '%261QD1600X%' or flattened_taxonomy_string like '%261QE0002X%' or flattened_taxonomy_string like '%261QE0700X%' or flattened_taxonomy_string like '%261QE0800X%' or flattened_taxonomy_string like '%261QF0050X%' or flattened_taxonomy_string like '%261QF0400X%' or flattened_taxonomy_string like '%261QG0250X%' or flattened_taxonomy_string like '%261QH0100X%' or flattened_taxonomy_string like '%261QH0700X%' or flattened_taxonomy_string like '%261QI0500X%' or flattened_taxonomy_string like '%261QL0400X%' or flattened_taxonomy_string like '%261QM0801X%' or flattened_taxonomy_string like '%261QM0850X%' or flattened_taxonomy_string like '%261QM0855X%' or flattened_taxonomy_string like '%261QM1000X%' or flattened_taxonomy_string like '%261QM1100X%' or flattened_taxonomy_string like '%261QM1101X%' or flattened_taxonomy_string like '%261QM1102X%' or flattened_taxonomy_string like '%261QM1103X%' or flattened_taxonomy_string like '%261QM1200X%' or flattened_taxonomy_string like '%261QM1300X%' or flattened_taxonomy_string like '%261QM2500X%' or flattened_taxonomy_string like '%261QM2800X%' or flattened_taxonomy_string like '%261QM3000X%' or flattened_taxonomy_string like '%261QP0904X%' or flattened_taxonomy_string like '%261QP0905X%' or flattened_taxonomy_string like '%261QP1100X%' or flattened_taxonomy_string like '%261QP2000X%' or flattened_taxonomy_string like '%261QP2300X%' or flattened_taxonomy_string like '%261QP2400X%' or flattened_taxonomy_string like '%261QP3300X%' or flattened_taxonomy_string like '%261QR0200X%' or flattened_taxonomy_string like '%261QR0206X%' or flattened_taxonomy_string like '%261QR0207X%' or flattened_taxonomy_string like '%261QR0208X%' or flattened_taxonomy_string like '%261QR0400X%' or flattened_taxonomy_string like '%261QR0401X%' or flattened_taxonomy_string like '%261QR0404X%' or flattened_taxonomy_string like '%261QR0405X%' or flattened_taxonomy_string like '%261QR0800X%' or flattened_taxonomy_string like '%261QR1100X%' or flattened_taxonomy_string like '%261QR1300X%' or flattened_taxonomy_string like '%261QS0112X%' or flattened_taxonomy_string like '%261QS0132X%' or flattened_taxonomy_string like '%261QS1000X%' or flattened_taxonomy_string like '%261QS1200X%' or flattened_taxonomy_string like '%261QU0200X%' or flattened_taxonomy_string like '%261QV0200X%' or flattened_taxonomy_string like '%261QX0100X%' or flattened_taxonomy_string like '%261QX0200X%' or flattened_taxonomy_string like '%261QX0203X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_clinic_center = case when  flattened_taxonomy_string like '%261Q00000X%' or flattened_taxonomy_string like '%261QA0005X%' or flattened_taxonomy_string like '%261QA0006X%' or flattened_taxonomy_string like '%261QA0600X%' or flattened_taxonomy_string like '%261QA0900X%' or flattened_taxonomy_string like '%261QA1903X%' or flattened_taxonomy_string like '%261QA3000X%' or flattened_taxonomy_string like '%261QB0400X%' or flattened_taxonomy_string like '%261QC0050X%' or flattened_taxonomy_string like '%261QC1500X%' or flattened_taxonomy_string like '%261QC1800X%' or flattened_taxonomy_string like '%261QD0000X%' or flattened_taxonomy_string like '%261QD1600X%' or flattened_taxonomy_string like '%261QE0002X%' or flattened_taxonomy_string like '%261QE0700X%' or flattened_taxonomy_string like '%261QE0800X%' or flattened_taxonomy_string like '%261QF0050X%' or flattened_taxonomy_string like '%261QF0400X%' or flattened_taxonomy_string like '%261QG0250X%' or flattened_taxonomy_string like '%261QH0100X%' or flattened_taxonomy_string like '%261QH0700X%' or flattened_taxonomy_string like '%261QI0500X%' or flattened_taxonomy_string like '%261QL0400X%' or flattened_taxonomy_string like '%261QM0801X%' or flattened_taxonomy_string like '%261QM0850X%' or flattened_taxonomy_string like '%261QM0855X%' or flattened_taxonomy_string like '%261QM1000X%' or flattened_taxonomy_string like '%261QM1100X%' or flattened_taxonomy_string like '%261QM1101X%' or flattened_taxonomy_string like '%261QM1102X%' or flattened_taxonomy_string like '%261QM1103X%' or flattened_taxonomy_string like '%261QM1200X%' or flattened_taxonomy_string like '%261QM1300X%' or flattened_taxonomy_string like '%261QM2500X%' or flattened_taxonomy_string like '%261QM2800X%' or flattened_taxonomy_string like '%261QM3000X%' or flattened_taxonomy_string like '%261QP0904X%' or flattened_taxonomy_string like '%261QP0905X%' or flattened_taxonomy_string like '%261QP1100X%' or flattened_taxonomy_string like '%261QP2000X%' or flattened_taxonomy_string like '%261QP2300X%' or flattened_taxonomy_string like '%261QP2400X%' or flattened_taxonomy_string like '%261QP3300X%' or flattened_taxonomy_string like '%261QR0200X%' or flattened_taxonomy_string like '%261QR0206X%' or flattened_taxonomy_string like '%261QR0207X%' or flattened_taxonomy_string like '%261QR0208X%' or flattened_taxonomy_string like '%261QR0400X%' or flattened_taxonomy_string like '%261QR0401X%' or flattened_taxonomy_string like '%261QR0404X%' or flattened_taxonomy_string like '%261QR0405X%' or flattened_taxonomy_string like '%261QR0800X%' or flattened_taxonomy_string like '%261QR1100X%' or flattened_taxonomy_string like '%261QR1300X%' or flattened_taxonomy_string like '%261QS0112X%' or flattened_taxonomy_string like '%261QS0132X%' or flattened_taxonomy_string like '%261QS1000X%' or flattened_taxonomy_string like '%261QS1200X%' or flattened_taxonomy_string like '%261QU0200X%' or flattened_taxonomy_string like '%261QV0200X%' or flattened_taxonomy_string like '%261QX0100X%' or flattened_taxonomy_string like '%261QX0200X%' or flattened_taxonomy_string like '%261QX0203X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_clinical_nurse_specialist = case when  flattened_taxonomy_string like '%364S00000X%' or flattened_taxonomy_string like '%364SA2100X%' or flattened_taxonomy_string like '%364SA2200X%' or flattened_taxonomy_string like '%364SC0200X%' or flattened_taxonomy_string like '%364SC1501X%' or flattened_taxonomy_string like '%364SC2300X%' or flattened_taxonomy_string like '%364SE0003X%' or flattened_taxonomy_string like '%364SE1400X%' or flattened_taxonomy_string like '%364SF0001X%' or flattened_taxonomy_string like '%364SG0600X%' or flattened_taxonomy_string like '%364SH0200X%' or flattened_taxonomy_string like '%364SH1100X%' or flattened_taxonomy_string like '%364SI0800X%' or flattened_taxonomy_string like '%364SL0600X%' or flattened_taxonomy_string like '%364SM0705X%' or flattened_taxonomy_string like '%364SN0000X%' or flattened_taxonomy_string like '%364SN0800X%' or flattened_taxonomy_string like '%364SP0200X%' or flattened_taxonomy_string like '%364SP0807X%' or flattened_taxonomy_string like '%364SP0808X%' or flattened_taxonomy_string like '%364SP0809X%' or flattened_taxonomy_string like '%364SP0810X%' or flattened_taxonomy_string like '%364SP0811X%' or flattened_taxonomy_string like '%364SP0812X%' or flattened_taxonomy_string like '%364SP0813X%' or flattened_taxonomy_string like '%364SP1700X%' or flattened_taxonomy_string like '%364SP2800X%' or flattened_taxonomy_string like '%364SR0400X%' or flattened_taxonomy_string like '%364SS0200X%' or flattened_taxonomy_string like '%364ST0500X%' or flattened_taxonomy_string like '%364SW0102X%' or flattened_taxonomy_string like '%364SX0106X%' or flattened_taxonomy_string like '%364SX0200X%' or flattened_taxonomy_string like '%364SX0204X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_clinical_nurse_specialist = case when  flattened_taxonomy_string like '%364S00000X%' or flattened_taxonomy_string like '%364SA2100X%' or flattened_taxonomy_string like '%364SA2200X%' or flattened_taxonomy_string like '%364SC0200X%' or flattened_taxonomy_string like '%364SC1501X%' or flattened_taxonomy_string like '%364SC2300X%' or flattened_taxonomy_string like '%364SE0003X%' or flattened_taxonomy_string like '%364SE1400X%' or flattened_taxonomy_string like '%364SF0001X%' or flattened_taxonomy_string like '%364SG0600X%' or flattened_taxonomy_string like '%364SH0200X%' or flattened_taxonomy_string like '%364SH1100X%' or flattened_taxonomy_string like '%364SI0800X%' or flattened_taxonomy_string like '%364SL0600X%' or flattened_taxonomy_string like '%364SM0705X%' or flattened_taxonomy_string like '%364SN0000X%' or flattened_taxonomy_string like '%364SN0800X%' or flattened_taxonomy_string like '%364SP0200X%' or flattened_taxonomy_string like '%364SP0807X%' or flattened_taxonomy_string like '%364SP0808X%' or flattened_taxonomy_string like '%364SP0809X%' or flattened_taxonomy_string like '%364SP0810X%' or flattened_taxonomy_string like '%364SP0811X%' or flattened_taxonomy_string like '%364SP0812X%' or flattened_taxonomy_string like '%364SP0813X%' or flattened_taxonomy_string like '%364SP1700X%' or flattened_taxonomy_string like '%364SP2800X%' or flattened_taxonomy_string like '%364SR0400X%' or flattened_taxonomy_string like '%364SS0200X%' or flattened_taxonomy_string like '%364ST0500X%' or flattened_taxonomy_string like '%364SW0102X%' or flattened_taxonomy_string like '%364SX0106X%' or flattened_taxonomy_string like '%364SX0200X%' or flattened_taxonomy_string like '%364SX0204X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_clinical_pharmacology = case when  flattened_taxonomy_string like '%208U00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_clinical_pharmacology = case when  flattened_taxonomy_string like '%208U00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_colon_and_rectal_surgery = case when  flattened_taxonomy_string like '%208C00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_colon_and_rectal_surgery = case when  flattened_taxonomy_string like '%208C00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_counselor = case when  flattened_taxonomy_string like '%101Y00000X%' or flattened_taxonomy_string like '%101YA0400X%' or flattened_taxonomy_string like '%101YM0800X%' or flattened_taxonomy_string like '%101YP1600X%' or flattened_taxonomy_string like '%101YP2500X%' or flattened_taxonomy_string like '%101YS0200X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_counselor = case when  flattened_taxonomy_string like '%101Y00000X%' or flattened_taxonomy_string like '%101YA0400X%' or flattened_taxonomy_string like '%101YM0800X%' or flattened_taxonomy_string like '%101YP1600X%' or flattened_taxonomy_string like '%101YP2500X%' or flattened_taxonomy_string like '%101YS0200X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_dentist = case when  flattened_taxonomy_string like '%122300000X%' or flattened_taxonomy_string like '%1223D0001X%' or flattened_taxonomy_string like '%1223E0200X%' or flattened_taxonomy_string like '%1223G0001X%' or flattened_taxonomy_string like '%1223P0106X%' or flattened_taxonomy_string like '%1223P0221X%' or flattened_taxonomy_string like '%1223P0300X%' or flattened_taxonomy_string like '%1223P0700X%' or flattened_taxonomy_string like '%1223S0112X%' or flattened_taxonomy_string like '%1223X0008X%' or flattened_taxonomy_string like '%1223X0400X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_dentist = case when  flattened_taxonomy_string like '%122300000X%' or flattened_taxonomy_string like '%1223D0001X%' or flattened_taxonomy_string like '%1223E0200X%' or flattened_taxonomy_string like '%1223G0001X%' or flattened_taxonomy_string like '%1223P0106X%' or flattened_taxonomy_string like '%1223P0221X%' or flattened_taxonomy_string like '%1223P0300X%' or flattened_taxonomy_string like '%1223P0700X%' or flattened_taxonomy_string like '%1223S0112X%' or flattened_taxonomy_string like '%1223X0008X%' or flattened_taxonomy_string like '%1223X0400X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_denturist = case when  flattened_taxonomy_string like '%122400000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_denturist = case when  flattened_taxonomy_string like '%122400000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_dermatology = case when  flattened_taxonomy_string like '%207N00000X%' or flattened_taxonomy_string like '%207ND0101X%' or flattened_taxonomy_string like '%207ND0900X%' or flattened_taxonomy_string like '%207NI0002X%' or flattened_taxonomy_string like '%207NP0225X%' or flattened_taxonomy_string like '%207NS0135X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_dermatology = case when  flattened_taxonomy_string like '%207N00000X%' or flattened_taxonomy_string like '%207ND0101X%' or flattened_taxonomy_string like '%207ND0900X%' or flattened_taxonomy_string like '%207NI0002X%' or flattened_taxonomy_string like '%207NP0225X%' or flattened_taxonomy_string like '%207NS0135X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_durable_medical_equipment_medical_supplies = case when  flattened_taxonomy_string like '%332B00000X%' or flattened_taxonomy_string like '%332BC3200X%' or flattened_taxonomy_string like '%332BD1200X%' or flattened_taxonomy_string like '%332BN1400X%' or flattened_taxonomy_string like '%332BP3500X%' or flattened_taxonomy_string like '%332BX2000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_durable_medical_equipment_medical_supplies = case when  flattened_taxonomy_string like '%332B00000X%' or flattened_taxonomy_string like '%332BC3200X%' or flattened_taxonomy_string like '%332BD1200X%' or flattened_taxonomy_string like '%332BN1400X%' or flattened_taxonomy_string like '%332BP3500X%' or flattened_taxonomy_string like '%332BX2000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_electrodiagnostic_medicine = case when  flattened_taxonomy_string like '%204R00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_electrodiagnostic_medicine = case when  flattened_taxonomy_string like '%204R00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_emergency_medicine = case when  flattened_taxonomy_string like '%207P00000X%' or flattened_taxonomy_string like '%207PE0004X%' or flattened_taxonomy_string like '%207PE0005X%' or flattened_taxonomy_string like '%207PH0002X%' or flattened_taxonomy_string like '%207PP0204X%' or flattened_taxonomy_string like '%207PS0010X%' or flattened_taxonomy_string like '%207PT0002X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_emergency_medicine = case when  flattened_taxonomy_string like '%207P00000X%' or flattened_taxonomy_string like '%207PE0004X%' or flattened_taxonomy_string like '%207PE0005X%' or flattened_taxonomy_string like '%207PH0002X%' or flattened_taxonomy_string like '%207PP0204X%' or flattened_taxonomy_string like '%207PS0010X%' or flattened_taxonomy_string like '%207PT0002X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_family_medicine = case when  flattened_taxonomy_string like '%207Q00000X%' or flattened_taxonomy_string like '%207QA0000X%' or flattened_taxonomy_string like '%207QA0401X%' or flattened_taxonomy_string like '%207QA0505X%' or flattened_taxonomy_string like '%207QB0002X%' or flattened_taxonomy_string like '%207QG0300X%' or flattened_taxonomy_string like '%207QH0002X%' or flattened_taxonomy_string like '%207QS0010X%' or flattened_taxonomy_string like '%207QS1201X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_family_medicine = case when  flattened_taxonomy_string like '%207Q00000X%' or flattened_taxonomy_string like '%207QA0000X%' or flattened_taxonomy_string like '%207QA0401X%' or flattened_taxonomy_string like '%207QA0505X%' or flattened_taxonomy_string like '%207QB0002X%' or flattened_taxonomy_string like '%207QG0300X%' or flattened_taxonomy_string like '%207QH0002X%' or flattened_taxonomy_string like '%207QS0010X%' or flattened_taxonomy_string like '%207QS1201X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_general_acute_care_hospital = case when  flattened_taxonomy_string like '%282N00000X%' or flattened_taxonomy_string like '%282NC0060X%' or flattened_taxonomy_string like '%282NC2000X%' or flattened_taxonomy_string like '%282NR1301X%' or flattened_taxonomy_string like '%282NW0100X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_general_acute_care_hospital = case when  flattened_taxonomy_string like '%282N00000X%' or flattened_taxonomy_string like '%282NC0060X%' or flattened_taxonomy_string like '%282NC2000X%' or flattened_taxonomy_string like '%282NR1301X%' or flattened_taxonomy_string like '%282NW0100X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_general_practice = case when  flattened_taxonomy_string like '%208D00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_general_practice = case when  flattened_taxonomy_string like '%208D00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_genetic_counselor_ms = case when  flattened_taxonomy_string like '%170300000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_genetic_counselor_ms = case when  flattened_taxonomy_string like '%170300000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_hospitalist = case when  flattened_taxonomy_string like '%208M00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_hospitalist = case when  flattened_taxonomy_string like '%208M00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_internal_medicine = case when  flattened_taxonomy_string like '%207R00000X%' or flattened_taxonomy_string like '%207RA0000X%' or flattened_taxonomy_string like '%207RA0201X%' or flattened_taxonomy_string like '%207RA0401X%' or flattened_taxonomy_string like '%207RB0002X%' or flattened_taxonomy_string like '%207RC0000X%' or flattened_taxonomy_string like '%207RC0001X%' or flattened_taxonomy_string like '%207RC0200X%' or flattened_taxonomy_string like '%207RE0101X%' or flattened_taxonomy_string like '%207RG0100X%' or flattened_taxonomy_string like '%207RG0300X%' or flattened_taxonomy_string like '%207RH0000X%' or flattened_taxonomy_string like '%207RH0002X%' or flattened_taxonomy_string like '%207RH0003X%' or flattened_taxonomy_string like '%207RH0005X%' or flattened_taxonomy_string like '%207RI0001X%' or flattened_taxonomy_string like '%207RI0008X%' or flattened_taxonomy_string like '%207RI0011X%' or flattened_taxonomy_string like '%207RI0200X%' or flattened_taxonomy_string like '%207RM1200X%' or flattened_taxonomy_string like '%207RN0300X%' or flattened_taxonomy_string like '%207RP1001X%' or flattened_taxonomy_string like '%207RR0500X%' or flattened_taxonomy_string like '%207RS0010X%' or flattened_taxonomy_string like '%207RS0012X%' or flattened_taxonomy_string like '%207RT0003X%' or flattened_taxonomy_string like '%207RX0202X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_internal_medicine = case when  flattened_taxonomy_string like '%207R00000X%' or flattened_taxonomy_string like '%207RA0000X%' or flattened_taxonomy_string like '%207RA0201X%' or flattened_taxonomy_string like '%207RA0401X%' or flattened_taxonomy_string like '%207RB0002X%' or flattened_taxonomy_string like '%207RC0000X%' or flattened_taxonomy_string like '%207RC0001X%' or flattened_taxonomy_string like '%207RC0200X%' or flattened_taxonomy_string like '%207RE0101X%' or flattened_taxonomy_string like '%207RG0100X%' or flattened_taxonomy_string like '%207RG0300X%' or flattened_taxonomy_string like '%207RH0000X%' or flattened_taxonomy_string like '%207RH0002X%' or flattened_taxonomy_string like '%207RH0003X%' or flattened_taxonomy_string like '%207RH0005X%' or flattened_taxonomy_string like '%207RI0001X%' or flattened_taxonomy_string like '%207RI0008X%' or flattened_taxonomy_string like '%207RI0011X%' or flattened_taxonomy_string like '%207RI0200X%' or flattened_taxonomy_string like '%207RM1200X%' or flattened_taxonomy_string like '%207RN0300X%' or flattened_taxonomy_string like '%207RP1001X%' or flattened_taxonomy_string like '%207RR0500X%' or flattened_taxonomy_string like '%207RS0010X%' or flattened_taxonomy_string like '%207RS0012X%' or flattened_taxonomy_string like '%207RT0003X%' or flattened_taxonomy_string like '%207RX0202X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_legal_medicine = case when  flattened_taxonomy_string like '%209800000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_legal_medicine = case when  flattened_taxonomy_string like '%209800000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_marriage_and_family_therapist = case when  flattened_taxonomy_string like '%106H00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_marriage_and_family_therapist = case when  flattened_taxonomy_string like '%106H00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_massage_therapist = case when  flattened_taxonomy_string like '%225700000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_massage_therapist = case when  flattened_taxonomy_string like '%225700000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_medical_genetics = case when  flattened_taxonomy_string like '%207SC0300X%' or flattened_taxonomy_string like '%207SG0201X%' or flattened_taxonomy_string like '%207SG0202X%' or flattened_taxonomy_string like '%207SG0203X%' or flattened_taxonomy_string like '%207SG0205X%' or flattened_taxonomy_string like '%207SM0001X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_medical_genetics = case when  flattened_taxonomy_string like '%207SC0300X%' or flattened_taxonomy_string like '%207SG0201X%' or flattened_taxonomy_string like '%207SG0202X%' or flattened_taxonomy_string like '%207SG0203X%' or flattened_taxonomy_string like '%207SG0205X%' or flattened_taxonomy_string like '%207SM0001X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_medical_genetics_phd_medical_genetics = case when  flattened_taxonomy_string like '%170100000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_medical_genetics_phd_medical_genetics = case when  flattened_taxonomy_string like '%170100000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_military_hospital = case when  flattened_taxonomy_string like '%286500000X%' or flattened_taxonomy_string like '%2865C1500X%' or flattened_taxonomy_string like '%2865M2000X%' or flattened_taxonomy_string like '%2865X1600X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_military_hospital = case when  flattened_taxonomy_string like '%286500000X%' or flattened_taxonomy_string like '%2865C1500X%' or flattened_taxonomy_string like '%2865M2000X%' or flattened_taxonomy_string like '%2865X1600X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_multispecialty = case when  flattened_taxonomy_string like '%193200000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_multispecialty = case when  flattened_taxonomy_string like '%193200000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_neurological_surgery = case when  flattened_taxonomy_string like '%207T00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_neurological_surgery = case when  flattened_taxonomy_string like '%207T00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_neuromusculoskeletal_medicine_and_omm = case when  flattened_taxonomy_string like '%204D00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_neuromusculoskeletal_medicine_and_omm = case when  flattened_taxonomy_string like '%204D00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_nuclear_medicine = case when  flattened_taxonomy_string like '%207U00000X%' or flattened_taxonomy_string like '%207UN0901X%' or flattened_taxonomy_string like '%207UN0902X%' or flattened_taxonomy_string like '%207UN0903X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_nuclear_medicine = case when  flattened_taxonomy_string like '%207U00000X%' or flattened_taxonomy_string like '%207UN0901X%' or flattened_taxonomy_string like '%207UN0902X%' or flattened_taxonomy_string like '%207UN0903X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_nurse_anesthetist_certified_registered = case when  flattened_taxonomy_string like '%367500000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_nurse_anesthetist_certified_registered = case when  flattened_taxonomy_string like '%367500000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_nurse_practitioner = case when  flattened_taxonomy_string like '%363L00000X%' or flattened_taxonomy_string like '%363LA2100X%' or flattened_taxonomy_string like '%363LA2200X%' or flattened_taxonomy_string like '%363LC0200X%' or flattened_taxonomy_string like '%363LC1500X%' or flattened_taxonomy_string like '%363LF0000X%' or flattened_taxonomy_string like '%363LG0600X%' or flattened_taxonomy_string like '%363LN0000X%' or flattened_taxonomy_string like '%363LN0005X%' or flattened_taxonomy_string like '%363LP0200X%' or flattened_taxonomy_string like '%363LP0222X%' or flattened_taxonomy_string like '%363LP0808X%' or flattened_taxonomy_string like '%363LP1700X%' or flattened_taxonomy_string like '%363LP2300X%' or flattened_taxonomy_string like '%363LS0200X%' or flattened_taxonomy_string like '%363LW0102X%' or flattened_taxonomy_string like '%363LX0001X%' or flattened_taxonomy_string like '%363LX0106X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_nurse_practitioner = case when  flattened_taxonomy_string like '%363L00000X%' or flattened_taxonomy_string like '%363LA2100X%' or flattened_taxonomy_string like '%363LA2200X%' or flattened_taxonomy_string like '%363LC0200X%' or flattened_taxonomy_string like '%363LC1500X%' or flattened_taxonomy_string like '%363LF0000X%' or flattened_taxonomy_string like '%363LG0600X%' or flattened_taxonomy_string like '%363LN0000X%' or flattened_taxonomy_string like '%363LN0005X%' or flattened_taxonomy_string like '%363LP0200X%' or flattened_taxonomy_string like '%363LP0222X%' or flattened_taxonomy_string like '%363LP0808X%' or flattened_taxonomy_string like '%363LP1700X%' or flattened_taxonomy_string like '%363LP2300X%' or flattened_taxonomy_string like '%363LS0200X%' or flattened_taxonomy_string like '%363LW0102X%' or flattened_taxonomy_string like '%363LX0001X%' or flattened_taxonomy_string like '%363LX0106X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_obstetrics_and_gynecology = case when  flattened_taxonomy_string like '%207V00000X%' or flattened_taxonomy_string like '%207VB0002X%' or flattened_taxonomy_string like '%207VC0200X%' or flattened_taxonomy_string like '%207VE0102X%' or flattened_taxonomy_string like '%207VF0040X%' or flattened_taxonomy_string like '%207VG0400X%' or flattened_taxonomy_string like '%207VH0002X%' or flattened_taxonomy_string like '%207VM0101X%' or flattened_taxonomy_string like '%207VX0000X%' or flattened_taxonomy_string like '%207VX0201X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_obstetrics_and_gynecology = case when  flattened_taxonomy_string like '%207V00000X%' or flattened_taxonomy_string like '%207VB0002X%' or flattened_taxonomy_string like '%207VC0200X%' or flattened_taxonomy_string like '%207VE0102X%' or flattened_taxonomy_string like '%207VF0040X%' or flattened_taxonomy_string like '%207VG0400X%' or flattened_taxonomy_string like '%207VH0002X%' or flattened_taxonomy_string like '%207VM0101X%' or flattened_taxonomy_string like '%207VX0000X%' or flattened_taxonomy_string like '%207VX0201X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_ophthalmology = case when  flattened_taxonomy_string like '%207W00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_ophthalmology = case when  flattened_taxonomy_string like '%207W00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_optometrist = case when  flattened_taxonomy_string like '%152W00000X%' or flattened_taxonomy_string like '%152WC0802X%' or flattened_taxonomy_string like '%152WL0500X%' or flattened_taxonomy_string like '%152WP0200X%' or flattened_taxonomy_string like '%152WS0006X%' or flattened_taxonomy_string like '%152WV0400X%' or flattened_taxonomy_string like '%152WX0102X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_optometrist = case when  flattened_taxonomy_string like '%152W00000X%' or flattened_taxonomy_string like '%152WC0802X%' or flattened_taxonomy_string like '%152WL0500X%' or flattened_taxonomy_string like '%152WP0200X%' or flattened_taxonomy_string like '%152WS0006X%' or flattened_taxonomy_string like '%152WV0400X%' or flattened_taxonomy_string like '%152WX0102X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_orthopaedic_surgery = case when  flattened_taxonomy_string like '%207X00000X%' or flattened_taxonomy_string like '%207XP3100X%' or flattened_taxonomy_string like '%207XS0106X%' or flattened_taxonomy_string like '%207XS0114X%' or flattened_taxonomy_string like '%207XS0117X%' or flattened_taxonomy_string like '%207XX0004X%' or flattened_taxonomy_string like '%207XX0005X%' or flattened_taxonomy_string like '%207XX0801X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_orthopaedic_surgery = case when  flattened_taxonomy_string like '%207X00000X%' or flattened_taxonomy_string like '%207XP3100X%' or flattened_taxonomy_string like '%207XS0106X%' or flattened_taxonomy_string like '%207XS0114X%' or flattened_taxonomy_string like '%207XS0117X%' or flattened_taxonomy_string like '%207XX0004X%' or flattened_taxonomy_string like '%207XX0005X%' or flattened_taxonomy_string like '%207XX0801X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_otolaryngology = case when  flattened_taxonomy_string like '%207Y00000X%' or flattened_taxonomy_string like '%207YP0228X%' or flattened_taxonomy_string like '%207YS0012X%' or flattened_taxonomy_string like '%207YS0123X%' or flattened_taxonomy_string like '%207YX0007X%' or flattened_taxonomy_string like '%207YX0602X%' or flattened_taxonomy_string like '%207YX0901X%' or flattened_taxonomy_string like '%207YX0905X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_otolaryngology = case when  flattened_taxonomy_string like '%207Y00000X%' or flattened_taxonomy_string like '%207YP0228X%' or flattened_taxonomy_string like '%207YS0012X%' or flattened_taxonomy_string like '%207YS0123X%' or flattened_taxonomy_string like '%207YX0007X%' or flattened_taxonomy_string like '%207YX0602X%' or flattened_taxonomy_string like '%207YX0901X%' or flattened_taxonomy_string like '%207YX0905X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_pain_medicine = case when  flattened_taxonomy_string like '%208VP0000X%' or flattened_taxonomy_string like '%208VP0014X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_pain_medicine = case when  flattened_taxonomy_string like '%208VP0000X%' or flattened_taxonomy_string like '%208VP0014X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_pathology = case when  flattened_taxonomy_string like '%207ZB0001X%' or flattened_taxonomy_string like '%207ZC0006X%' or flattened_taxonomy_string like '%207ZC0500X%' or flattened_taxonomy_string like '%207ZD0900X%' or flattened_taxonomy_string like '%207ZF0201X%' or flattened_taxonomy_string like '%207ZH0000X%' or flattened_taxonomy_string like '%207ZI0100X%' or flattened_taxonomy_string like '%207ZM0300X%' or flattened_taxonomy_string like '%207ZN0500X%' or flattened_taxonomy_string like '%207ZP0007X%' or flattened_taxonomy_string like '%207ZP0101X%' or flattened_taxonomy_string like '%207ZP0102X%' or flattened_taxonomy_string like '%207ZP0104X%' or flattened_taxonomy_string like '%207ZP0105X%' or flattened_taxonomy_string like '%207ZP0213X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_pathology = case when  flattened_taxonomy_string like '%207ZB0001X%' or flattened_taxonomy_string like '%207ZC0006X%' or flattened_taxonomy_string like '%207ZC0500X%' or flattened_taxonomy_string like '%207ZD0900X%' or flattened_taxonomy_string like '%207ZF0201X%' or flattened_taxonomy_string like '%207ZH0000X%' or flattened_taxonomy_string like '%207ZI0100X%' or flattened_taxonomy_string like '%207ZM0300X%' or flattened_taxonomy_string like '%207ZN0500X%' or flattened_taxonomy_string like '%207ZP0007X%' or flattened_taxonomy_string like '%207ZP0101X%' or flattened_taxonomy_string like '%207ZP0102X%' or flattened_taxonomy_string like '%207ZP0104X%' or flattened_taxonomy_string like '%207ZP0105X%' or flattened_taxonomy_string like '%207ZP0213X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_pediatrics = case when  flattened_taxonomy_string like '%208000000X%' or flattened_taxonomy_string like '%2080A0000X%' or flattened_taxonomy_string like '%2080C0008X%' or flattened_taxonomy_string like '%2080H0002X%' or flattened_taxonomy_string like '%2080I0007X%' or flattened_taxonomy_string like '%2080N0001X%' or flattened_taxonomy_string like '%2080P0006X%' or flattened_taxonomy_string like '%2080P0008X%' or flattened_taxonomy_string like '%2080P0201X%' or flattened_taxonomy_string like '%2080P0202X%' or flattened_taxonomy_string like '%2080P0203X%' or flattened_taxonomy_string like '%2080P0204X%' or flattened_taxonomy_string like '%2080P0205X%' or flattened_taxonomy_string like '%2080P0206X%' or flattened_taxonomy_string like '%2080P0207X%' or flattened_taxonomy_string like '%2080P0208X%' or flattened_taxonomy_string like '%2080P0210X%' or flattened_taxonomy_string like '%2080P0214X%' or flattened_taxonomy_string like '%2080P0216X%' or flattened_taxonomy_string like '%2080S0010X%' or flattened_taxonomy_string like '%2080S0012X%' or flattened_taxonomy_string like '%2080T0002X%' or flattened_taxonomy_string like '%2080T0004X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_pediatrics = case when  flattened_taxonomy_string like '%208000000X%' or flattened_taxonomy_string like '%2080A0000X%' or flattened_taxonomy_string like '%2080C0008X%' or flattened_taxonomy_string like '%2080H0002X%' or flattened_taxonomy_string like '%2080I0007X%' or flattened_taxonomy_string like '%2080N0001X%' or flattened_taxonomy_string like '%2080P0006X%' or flattened_taxonomy_string like '%2080P0008X%' or flattened_taxonomy_string like '%2080P0201X%' or flattened_taxonomy_string like '%2080P0202X%' or flattened_taxonomy_string like '%2080P0203X%' or flattened_taxonomy_string like '%2080P0204X%' or flattened_taxonomy_string like '%2080P0205X%' or flattened_taxonomy_string like '%2080P0206X%' or flattened_taxonomy_string like '%2080P0207X%' or flattened_taxonomy_string like '%2080P0208X%' or flattened_taxonomy_string like '%2080P0210X%' or flattened_taxonomy_string like '%2080P0214X%' or flattened_taxonomy_string like '%2080P0216X%' or flattened_taxonomy_string like '%2080S0010X%' or flattened_taxonomy_string like '%2080S0012X%' or flattened_taxonomy_string like '%2080T0002X%' or flattened_taxonomy_string like '%2080T0004X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_pharmacist = case when  flattened_taxonomy_string like '%183500000X%' or flattened_taxonomy_string like '%1835G0000X%' or flattened_taxonomy_string like '%1835G0303X%' or flattened_taxonomy_string like '%1835N0905X%' or flattened_taxonomy_string like '%1835N1003X%' or flattened_taxonomy_string like '%1835P0018X%' or flattened_taxonomy_string like '%1835P1200X%' or flattened_taxonomy_string like '%1835P1300X%' or flattened_taxonomy_string like '%1835X0200X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_pharmacist = case when  flattened_taxonomy_string like '%183500000X%' or flattened_taxonomy_string like '%1835G0000X%' or flattened_taxonomy_string like '%1835G0303X%' or flattened_taxonomy_string like '%1835N0905X%' or flattened_taxonomy_string like '%1835N1003X%' or flattened_taxonomy_string like '%1835P0018X%' or flattened_taxonomy_string like '%1835P1200X%' or flattened_taxonomy_string like '%1835P1300X%' or flattened_taxonomy_string like '%1835X0200X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_pharmacy = case when  flattened_taxonomy_string like '%333600000X%' or flattened_taxonomy_string like '%3336C0002X%' or flattened_taxonomy_string like '%3336C0003X%' or flattened_taxonomy_string like '%3336C0004X%' or flattened_taxonomy_string like '%3336H0001X%' or flattened_taxonomy_string like '%3336I0012X%' or flattened_taxonomy_string like '%3336L0003X%' or flattened_taxonomy_string like '%3336M0002X%' or flattened_taxonomy_string like '%3336M0003X%' or flattened_taxonomy_string like '%3336N0007X%' or flattened_taxonomy_string like '%3336S0011X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_pharmacy = case when  flattened_taxonomy_string like '%333600000X%' or flattened_taxonomy_string like '%3336C0002X%' or flattened_taxonomy_string like '%3336C0003X%' or flattened_taxonomy_string like '%3336C0004X%' or flattened_taxonomy_string like '%3336H0001X%' or flattened_taxonomy_string like '%3336I0012X%' or flattened_taxonomy_string like '%3336L0003X%' or flattened_taxonomy_string like '%3336M0002X%' or flattened_taxonomy_string like '%3336M0003X%' or flattened_taxonomy_string like '%3336N0007X%' or flattened_taxonomy_string like '%3336S0011X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_pharmacy_technician = case when  flattened_taxonomy_string like '%183700000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_pharmacy_technician = case when  flattened_taxonomy_string like '%183700000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_physical_medicine_and_rehabilitation = case when  flattened_taxonomy_string like '%208100000X%' or flattened_taxonomy_string like '%2081H0002X%' or flattened_taxonomy_string like '%2081N0008X%' or flattened_taxonomy_string like '%2081P0004X%' or flattened_taxonomy_string like '%2081P0010X%' or flattened_taxonomy_string like '%2081P2900X%' or flattened_taxonomy_string like '%2081S0010X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_physical_medicine_and_rehabilitation = case when  flattened_taxonomy_string like '%208100000X%' or flattened_taxonomy_string like '%2081H0002X%' or flattened_taxonomy_string like '%2081N0008X%' or flattened_taxonomy_string like '%2081P0004X%' or flattened_taxonomy_string like '%2081P0010X%' or flattened_taxonomy_string like '%2081P2900X%' or flattened_taxonomy_string like '%2081S0010X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_physical_therapist = case when  flattened_taxonomy_string like '%2251C2600X%' or flattened_taxonomy_string like '%2251E1200X%' or flattened_taxonomy_string like '%2251E1300X%' or flattened_taxonomy_string like '%2251G0304X%' or flattened_taxonomy_string like '%2251H1200X%' or flattened_taxonomy_string like '%2251H1300X%' or flattened_taxonomy_string like '%2251N0400X%' or flattened_taxonomy_string like '%2251P0200X%' or flattened_taxonomy_string like '%2251S0007X%' or flattened_taxonomy_string like '%2251X0800X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_physical_therapist = case when  flattened_taxonomy_string like '%2251C2600X%' or flattened_taxonomy_string like '%2251E1200X%' or flattened_taxonomy_string like '%2251E1300X%' or flattened_taxonomy_string like '%2251G0304X%' or flattened_taxonomy_string like '%2251H1200X%' or flattened_taxonomy_string like '%2251H1300X%' or flattened_taxonomy_string like '%2251N0400X%' or flattened_taxonomy_string like '%2251P0200X%' or flattened_taxonomy_string like '%2251S0007X%' or flattened_taxonomy_string like '%2251X0800X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_physician_assistant = case when  flattened_taxonomy_string like '%363A00000X%' or flattened_taxonomy_string like '%363AM0700X%' or flattened_taxonomy_string like '%363AS0400X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_physician_assistant = case when  flattened_taxonomy_string like '%363A00000X%' or flattened_taxonomy_string like '%363AM0700X%' or flattened_taxonomy_string like '%363AS0400X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_plastic_surgery = case when  flattened_taxonomy_string like '%208200000X%' or flattened_taxonomy_string like '%2082S0099X%' or flattened_taxonomy_string like '%2082S0105X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_plastic_surgery = case when  flattened_taxonomy_string like '%208200000X%' or flattened_taxonomy_string like '%2082S0099X%' or flattened_taxonomy_string like '%2082S0105X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_podiatrist = case when  flattened_taxonomy_string like '%213E00000X%' or flattened_taxonomy_string like '%213EG0000X%' or flattened_taxonomy_string like '%213EP0504X%' or flattened_taxonomy_string like '%213EP1101X%' or flattened_taxonomy_string like '%213ER0200X%' or flattened_taxonomy_string like '%213ES0000X%' or flattened_taxonomy_string like '%213ES0103X%' or flattened_taxonomy_string like '%213ES0131X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_podiatrist = case when  flattened_taxonomy_string like '%213E00000X%' or flattened_taxonomy_string like '%213EG0000X%' or flattened_taxonomy_string like '%213EP0504X%' or flattened_taxonomy_string like '%213EP1101X%' or flattened_taxonomy_string like '%213ER0200X%' or flattened_taxonomy_string like '%213ES0000X%' or flattened_taxonomy_string like '%213ES0103X%' or flattened_taxonomy_string like '%213ES0131X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_preventive_medicine = case when  flattened_taxonomy_string like '%2083A0100X%' or flattened_taxonomy_string like '%2083P0011X%' or flattened_taxonomy_string like '%2083P0500X%' or flattened_taxonomy_string like '%2083P0901X%' or flattened_taxonomy_string like '%2083S0010X%' or flattened_taxonomy_string like '%2083T0002X%' or flattened_taxonomy_string like '%2083X0100X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_preventive_medicine = case when  flattened_taxonomy_string like '%2083A0100X%' or flattened_taxonomy_string like '%2083P0011X%' or flattened_taxonomy_string like '%2083P0500X%' or flattened_taxonomy_string like '%2083P0901X%' or flattened_taxonomy_string like '%2083S0010X%' or flattened_taxonomy_string like '%2083T0002X%' or flattened_taxonomy_string like '%2083X0100X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_psychiatric_hospital = case when  flattened_taxonomy_string like '%283Q00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_psychiatric_hospital = case when  flattened_taxonomy_string like '%283Q00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_psychiatric_unit = case when  flattened_taxonomy_string like '%273R00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_psychiatric_unit = case when  flattened_taxonomy_string like '%273R00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_psychiatry_and_neurology = case when  flattened_taxonomy_string like '%2084A0401X%' or flattened_taxonomy_string like '%2084B0002X%' or flattened_taxonomy_string like '%2084B0040X%' or flattened_taxonomy_string like '%2084D0003X%' or flattened_taxonomy_string like '%2084F0202X%' or flattened_taxonomy_string like '%2084H0002X%' or flattened_taxonomy_string like '%2084N0008X%' or flattened_taxonomy_string like '%2084N0400X%' or flattened_taxonomy_string like '%2084N0402X%' or flattened_taxonomy_string like '%2084N0600X%' or flattened_taxonomy_string like '%2084P0005X%' or flattened_taxonomy_string like '%2084P0015X%' or flattened_taxonomy_string like '%2084P0800X%' or flattened_taxonomy_string like '%2084P0802X%' or flattened_taxonomy_string like '%2084P0804X%' or flattened_taxonomy_string like '%2084P0805X%' or flattened_taxonomy_string like '%2084P2900X%' or flattened_taxonomy_string like '%2084S0010X%' or flattened_taxonomy_string like '%2084S0012X%' or flattened_taxonomy_string like '%2084V0102X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_psychiatry_and_neurology = case when  flattened_taxonomy_string like '%2084A0401X%' or flattened_taxonomy_string like '%2084B0002X%' or flattened_taxonomy_string like '%2084B0040X%' or flattened_taxonomy_string like '%2084D0003X%' or flattened_taxonomy_string like '%2084F0202X%' or flattened_taxonomy_string like '%2084H0002X%' or flattened_taxonomy_string like '%2084N0008X%' or flattened_taxonomy_string like '%2084N0400X%' or flattened_taxonomy_string like '%2084N0402X%' or flattened_taxonomy_string like '%2084N0600X%' or flattened_taxonomy_string like '%2084P0005X%' or flattened_taxonomy_string like '%2084P0015X%' or flattened_taxonomy_string like '%2084P0800X%' or flattened_taxonomy_string like '%2084P0802X%' or flattened_taxonomy_string like '%2084P0804X%' or flattened_taxonomy_string like '%2084P0805X%' or flattened_taxonomy_string like '%2084P2900X%' or flattened_taxonomy_string like '%2084S0010X%' or flattened_taxonomy_string like '%2084S0012X%' or flattened_taxonomy_string like '%2084V0102X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_psychoanalyst = case when  flattened_taxonomy_string like '%102L00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_psychoanalyst = case when  flattened_taxonomy_string like '%102L00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_psychologist = case when  flattened_taxonomy_string like '%103T00000X%' or flattened_taxonomy_string like '%103TA0400X%' or flattened_taxonomy_string like '%103TA0700X%' or flattened_taxonomy_string like '%103TB0200X%' or flattened_taxonomy_string like '%103TC0700X%' or flattened_taxonomy_string like '%103TC1900X%' or flattened_taxonomy_string like '%103TC2200X%' or flattened_taxonomy_string like '%103TE1000X%' or flattened_taxonomy_string like '%103TE1100X%' or flattened_taxonomy_string like '%103TF0000X%' or flattened_taxonomy_string like '%103TF0200X%' or flattened_taxonomy_string like '%103TH0004X%' or flattened_taxonomy_string like '%103TH0100X%' or flattened_taxonomy_string like '%103TM1700X%' or flattened_taxonomy_string like '%103TM1800X%' or flattened_taxonomy_string like '%103TP0016X%' or flattened_taxonomy_string like '%103TP0814X%' or flattened_taxonomy_string like '%103TP2700X%' or flattened_taxonomy_string like '%103TP2701X%' or flattened_taxonomy_string like '%103TR0400X%' or flattened_taxonomy_string like '%103TS0200X%' or flattened_taxonomy_string like '%103TW0100X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_psychologist = case when  flattened_taxonomy_string like '%103T00000X%' or flattened_taxonomy_string like '%103TA0400X%' or flattened_taxonomy_string like '%103TA0700X%' or flattened_taxonomy_string like '%103TB0200X%' or flattened_taxonomy_string like '%103TC0700X%' or flattened_taxonomy_string like '%103TC1900X%' or flattened_taxonomy_string like '%103TC2200X%' or flattened_taxonomy_string like '%103TE1000X%' or flattened_taxonomy_string like '%103TE1100X%' or flattened_taxonomy_string like '%103TF0000X%' or flattened_taxonomy_string like '%103TF0200X%' or flattened_taxonomy_string like '%103TH0004X%' or flattened_taxonomy_string like '%103TH0100X%' or flattened_taxonomy_string like '%103TM1700X%' or flattened_taxonomy_string like '%103TM1800X%' or flattened_taxonomy_string like '%103TP0016X%' or flattened_taxonomy_string like '%103TP0814X%' or flattened_taxonomy_string like '%103TP2700X%' or flattened_taxonomy_string like '%103TP2701X%' or flattened_taxonomy_string like '%103TR0400X%' or flattened_taxonomy_string like '%103TS0200X%' or flattened_taxonomy_string like '%103TW0100X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_radiology = case when  flattened_taxonomy_string like '%2085B0100X%' or flattened_taxonomy_string like '%2085D0003X%' or flattened_taxonomy_string like '%2085H0002X%' or flattened_taxonomy_string like '%2085N0700X%' or flattened_taxonomy_string like '%2085N0904X%' or flattened_taxonomy_string like '%2085P0229X%' or flattened_taxonomy_string like '%2085R0001X%' or flattened_taxonomy_string like '%2085R0202X%' or flattened_taxonomy_string like '%2085R0203X%' or flattened_taxonomy_string like '%2085R0204X%' or flattened_taxonomy_string like '%2085R0205X%' or flattened_taxonomy_string like '%2085U0001X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_radiology = case when  flattened_taxonomy_string like '%2085B0100X%' or flattened_taxonomy_string like '%2085D0003X%' or flattened_taxonomy_string like '%2085H0002X%' or flattened_taxonomy_string like '%2085N0700X%' or flattened_taxonomy_string like '%2085N0904X%' or flattened_taxonomy_string like '%2085P0229X%' or flattened_taxonomy_string like '%2085R0001X%' or flattened_taxonomy_string like '%2085R0202X%' or flattened_taxonomy_string like '%2085R0203X%' or flattened_taxonomy_string like '%2085R0204X%' or flattened_taxonomy_string like '%2085R0205X%' or flattened_taxonomy_string like '%2085U0001X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_registered_nurse = case when  flattened_taxonomy_string like '%163W00000X%' or flattened_taxonomy_string like '%163WA0400X%' or flattened_taxonomy_string like '%163WA2000X%' or flattened_taxonomy_string like '%163WC0200X%' or flattened_taxonomy_string like '%163WC0400X%' or flattened_taxonomy_string like '%163WC1400X%' or flattened_taxonomy_string like '%163WC1500X%' or flattened_taxonomy_string like '%163WC1600X%' or flattened_taxonomy_string like '%163WC2100X%' or flattened_taxonomy_string like '%163WC3500X%' or flattened_taxonomy_string like '%163WD0400X%' or flattened_taxonomy_string like '%163WD1100X%' or flattened_taxonomy_string like '%163WE0003X%' or flattened_taxonomy_string like '%163WE0900X%' or flattened_taxonomy_string like '%163WF0300X%' or flattened_taxonomy_string like '%163WG0000X%' or flattened_taxonomy_string like '%163WG0100X%' or flattened_taxonomy_string like '%163WG0600X%' or flattened_taxonomy_string like '%163WH0200X%' or flattened_taxonomy_string like '%163WH0500X%' or flattened_taxonomy_string like '%163WH1000X%' or flattened_taxonomy_string like '%163WI0500X%' or flattened_taxonomy_string like '%163WI0600X%' or flattened_taxonomy_string like '%163WL0100X%' or flattened_taxonomy_string like '%163WM0102X%' or flattened_taxonomy_string like '%163WM0705X%' or flattened_taxonomy_string like '%163WM1400X%' or flattened_taxonomy_string like '%163WN0002X%' or flattened_taxonomy_string like '%163WN0003X%' or flattened_taxonomy_string like '%163WN0300X%' or flattened_taxonomy_string like '%163WN0800X%' or flattened_taxonomy_string like '%163WN1003X%' or flattened_taxonomy_string like '%163WP0000X%' or flattened_taxonomy_string like '%163WP0200X%' or flattened_taxonomy_string like '%163WP0218X%' or flattened_taxonomy_string like '%163WP0807X%' or flattened_taxonomy_string like '%163WP0808X%' or flattened_taxonomy_string like '%163WP0809X%' or flattened_taxonomy_string like '%163WP1700X%' or flattened_taxonomy_string like '%163WP2201X%' or flattened_taxonomy_string like '%163WR0006X%' or flattened_taxonomy_string like '%163WR0400X%' or flattened_taxonomy_string like '%163WR1000X%' or flattened_taxonomy_string like '%163WS0121X%' or flattened_taxonomy_string like '%163WS0200X%' or flattened_taxonomy_string like '%163WU0100X%' or flattened_taxonomy_string like '%163WW0000X%' or flattened_taxonomy_string like '%163WW0101X%' or flattened_taxonomy_string like '%163WX0002X%' or flattened_taxonomy_string like '%163WX0003X%' or flattened_taxonomy_string like '%163WX0106X%' or flattened_taxonomy_string like '%163WX0200X%' or flattened_taxonomy_string like '%163WX0601X%' or flattened_taxonomy_string like '%163WX0800X%' or flattened_taxonomy_string like '%163WX1100X%' or flattened_taxonomy_string like '%163WX1500X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_registered_nurse = case when  flattened_taxonomy_string like '%163W00000X%' or flattened_taxonomy_string like '%163WA0400X%' or flattened_taxonomy_string like '%163WA2000X%' or flattened_taxonomy_string like '%163WC0200X%' or flattened_taxonomy_string like '%163WC0400X%' or flattened_taxonomy_string like '%163WC1400X%' or flattened_taxonomy_string like '%163WC1500X%' or flattened_taxonomy_string like '%163WC1600X%' or flattened_taxonomy_string like '%163WC2100X%' or flattened_taxonomy_string like '%163WC3500X%' or flattened_taxonomy_string like '%163WD0400X%' or flattened_taxonomy_string like '%163WD1100X%' or flattened_taxonomy_string like '%163WE0003X%' or flattened_taxonomy_string like '%163WE0900X%' or flattened_taxonomy_string like '%163WF0300X%' or flattened_taxonomy_string like '%163WG0000X%' or flattened_taxonomy_string like '%163WG0100X%' or flattened_taxonomy_string like '%163WG0600X%' or flattened_taxonomy_string like '%163WH0200X%' or flattened_taxonomy_string like '%163WH0500X%' or flattened_taxonomy_string like '%163WH1000X%' or flattened_taxonomy_string like '%163WI0500X%' or flattened_taxonomy_string like '%163WI0600X%' or flattened_taxonomy_string like '%163WL0100X%' or flattened_taxonomy_string like '%163WM0102X%' or flattened_taxonomy_string like '%163WM0705X%' or flattened_taxonomy_string like '%163WM1400X%' or flattened_taxonomy_string like '%163WN0002X%' or flattened_taxonomy_string like '%163WN0003X%' or flattened_taxonomy_string like '%163WN0300X%' or flattened_taxonomy_string like '%163WN0800X%' or flattened_taxonomy_string like '%163WN1003X%' or flattened_taxonomy_string like '%163WP0000X%' or flattened_taxonomy_string like '%163WP0200X%' or flattened_taxonomy_string like '%163WP0218X%' or flattened_taxonomy_string like '%163WP0807X%' or flattened_taxonomy_string like '%163WP0808X%' or flattened_taxonomy_string like '%163WP0809X%' or flattened_taxonomy_string like '%163WP1700X%' or flattened_taxonomy_string like '%163WP2201X%' or flattened_taxonomy_string like '%163WR0006X%' or flattened_taxonomy_string like '%163WR0400X%' or flattened_taxonomy_string like '%163WR1000X%' or flattened_taxonomy_string like '%163WS0121X%' or flattened_taxonomy_string like '%163WS0200X%' or flattened_taxonomy_string like '%163WU0100X%' or flattened_taxonomy_string like '%163WW0000X%' or flattened_taxonomy_string like '%163WW0101X%' or flattened_taxonomy_string like '%163WX0002X%' or flattened_taxonomy_string like '%163WX0003X%' or flattened_taxonomy_string like '%163WX0106X%' or flattened_taxonomy_string like '%163WX0200X%' or flattened_taxonomy_string like '%163WX0601X%' or flattened_taxonomy_string like '%163WX0800X%' or flattened_taxonomy_string like '%163WX1100X%' or flattened_taxonomy_string like '%163WX1500X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_rehabilitation_hospital = case when  flattened_taxonomy_string like '%283X00000X%' or flattened_taxonomy_string like '%283XC2000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_rehabilitation_hospital = case when  flattened_taxonomy_string like '%283X00000X%' or flattened_taxonomy_string like '%283XC2000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_religious_nonmedical_health_care_institution = case when  flattened_taxonomy_string like '%282J00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_religious_nonmedical_health_care_institution = case when  flattened_taxonomy_string like '%282J00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_single_specialty = case when  flattened_taxonomy_string like '%193400000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_single_specialty = case when  flattened_taxonomy_string like '%193400000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_social_worker = case when  flattened_taxonomy_string like '%104100000X%' or flattened_taxonomy_string like '%1041C0700X%' or flattened_taxonomy_string like '%1041S0200X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_social_worker = case when  flattened_taxonomy_string like '%104100000X%' or flattened_taxonomy_string like '%1041C0700X%' or flattened_taxonomy_string like '%1041S0200X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_special_hospital = case when  flattened_taxonomy_string like '%284300000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_special_hospital = case when  flattened_taxonomy_string like '%284300000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_surgery = case when  flattened_taxonomy_string like '%208600000X%' or flattened_taxonomy_string like '%2086H0002X%' or flattened_taxonomy_string like '%2086S0102X%' or flattened_taxonomy_string like '%2086S0105X%' or flattened_taxonomy_string like '%2086S0120X%' or flattened_taxonomy_string like '%2086S0122X%' or flattened_taxonomy_string like '%2086S0127X%' or flattened_taxonomy_string like '%2086S0129X%' or flattened_taxonomy_string like '%2086X0206X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_surgery = case when  flattened_taxonomy_string like '%208600000X%' or flattened_taxonomy_string like '%2086H0002X%' or flattened_taxonomy_string like '%2086S0102X%' or flattened_taxonomy_string like '%2086S0105X%' or flattened_taxonomy_string like '%2086S0120X%' or flattened_taxonomy_string like '%2086S0122X%' or flattened_taxonomy_string like '%2086S0127X%' or flattened_taxonomy_string like '%2086S0129X%' or flattened_taxonomy_string like '%2086X0206X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_thoracic_surgery_cardiothoracic_vascular_surgery = case when  flattened_taxonomy_string like '%208G00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_thoracic_surgery_cardiothoracic_vascular_surgery = case when  flattened_taxonomy_string like '%208G00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_transplant_surgery = case when  flattened_taxonomy_string like '%204F00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_transplant_surgery = case when  flattened_taxonomy_string like '%204F00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_urology = case when  flattened_taxonomy_string like '%208800000X%' or flattened_taxonomy_string like '%2088F0040X%' or flattened_taxonomy_string like '%2088P0231X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_urology = case when  flattened_taxonomy_string like '%208800000X%' or flattened_taxonomy_string like '%2088F0040X%' or flattened_taxonomy_string like '%2088P0231X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_behavioral_health_and_social_service_providers = case when  flattened_taxonomy_string like '%101Y00000X%' or flattened_taxonomy_string like '%101YA0400X%' or flattened_taxonomy_string like '%101YM0800X%' or flattened_taxonomy_string like '%101YP1600X%' or flattened_taxonomy_string like '%101YP2500X%' or flattened_taxonomy_string like '%101YS0200X%' or flattened_taxonomy_string like '%102L00000X%' or flattened_taxonomy_string like '%102X00000X%' or flattened_taxonomy_string like '%103G00000X%' or flattened_taxonomy_string like '%103GC0700X%' or flattened_taxonomy_string like '%103K00000X%' or flattened_taxonomy_string like '%103T00000X%' or flattened_taxonomy_string like '%103TA0400X%' or flattened_taxonomy_string like '%103TA0700X%' or flattened_taxonomy_string like '%103TB0200X%' or flattened_taxonomy_string like '%103TC0700X%' or flattened_taxonomy_string like '%103TC1900X%' or flattened_taxonomy_string like '%103TC2200X%' or flattened_taxonomy_string like '%103TE1000X%' or flattened_taxonomy_string like '%103TE1100X%' or flattened_taxonomy_string like '%103TF0000X%' or flattened_taxonomy_string like '%103TF0200X%' or flattened_taxonomy_string like '%103TH0004X%' or flattened_taxonomy_string like '%103TH0100X%' or flattened_taxonomy_string like '%103TM1700X%' or flattened_taxonomy_string like '%103TM1800X%' or flattened_taxonomy_string like '%103TP0016X%' or flattened_taxonomy_string like '%103TP0814X%' or flattened_taxonomy_string like '%103TP2700X%' or flattened_taxonomy_string like '%103TP2701X%' or flattened_taxonomy_string like '%103TR0400X%' or flattened_taxonomy_string like '%103TS0200X%' or flattened_taxonomy_string like '%103TW0100X%' or flattened_taxonomy_string like '%104100000X%' or flattened_taxonomy_string like '%1041C0700X%' or flattened_taxonomy_string like '%1041S0200X%' or flattened_taxonomy_string like '%106H00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_behavioral_health_and_social_service_providers = case when  flattened_taxonomy_string like '%101Y00000X%' or flattened_taxonomy_string like '%101YA0400X%' or flattened_taxonomy_string like '%101YM0800X%' or flattened_taxonomy_string like '%101YP1600X%' or flattened_taxonomy_string like '%101YP2500X%' or flattened_taxonomy_string like '%101YS0200X%' or flattened_taxonomy_string like '%102L00000X%' or flattened_taxonomy_string like '%102X00000X%' or flattened_taxonomy_string like '%103G00000X%' or flattened_taxonomy_string like '%103GC0700X%' or flattened_taxonomy_string like '%103K00000X%' or flattened_taxonomy_string like '%103T00000X%' or flattened_taxonomy_string like '%103TA0400X%' or flattened_taxonomy_string like '%103TA0700X%' or flattened_taxonomy_string like '%103TB0200X%' or flattened_taxonomy_string like '%103TC0700X%' or flattened_taxonomy_string like '%103TC1900X%' or flattened_taxonomy_string like '%103TC2200X%' or flattened_taxonomy_string like '%103TE1000X%' or flattened_taxonomy_string like '%103TE1100X%' or flattened_taxonomy_string like '%103TF0000X%' or flattened_taxonomy_string like '%103TF0200X%' or flattened_taxonomy_string like '%103TH0004X%' or flattened_taxonomy_string like '%103TH0100X%' or flattened_taxonomy_string like '%103TM1700X%' or flattened_taxonomy_string like '%103TM1800X%' or flattened_taxonomy_string like '%103TP0016X%' or flattened_taxonomy_string like '%103TP0814X%' or flattened_taxonomy_string like '%103TP2700X%' or flattened_taxonomy_string like '%103TP2701X%' or flattened_taxonomy_string like '%103TR0400X%' or flattened_taxonomy_string like '%103TS0200X%' or flattened_taxonomy_string like '%103TW0100X%' or flattened_taxonomy_string like '%104100000X%' or flattened_taxonomy_string like '%1041C0700X%' or flattened_taxonomy_string like '%1041S0200X%' or flattened_taxonomy_string like '%106H00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_hospital = case when  flattened_taxonomy_string like '%273100000X%' or flattened_taxonomy_string like '%273R00000X%' or flattened_taxonomy_string like '%273Y00000X%' or flattened_taxonomy_string like '%275N00000X%' or flattened_taxonomy_string like '%276400000X%' or flattened_taxonomy_string like '%281P00000X%' or flattened_taxonomy_string like '%281PC2000X%' or flattened_taxonomy_string like '%282E00000X%' or flattened_taxonomy_string like '%282J00000X%' or flattened_taxonomy_string like '%282N00000X%' or flattened_taxonomy_string like '%282NC0060X%' or flattened_taxonomy_string like '%282NC2000X%' or flattened_taxonomy_string like '%282NR1301X%' or flattened_taxonomy_string like '%282NW0100X%' or flattened_taxonomy_string like '%283Q00000X%' or flattened_taxonomy_string like '%283X00000X%' or flattened_taxonomy_string like '%283XC2000X%' or flattened_taxonomy_string like '%284300000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_hospital = case when  flattened_taxonomy_string like '%273100000X%' or flattened_taxonomy_string like '%273R00000X%' or flattened_taxonomy_string like '%273Y00000X%' or flattened_taxonomy_string like '%275N00000X%' or flattened_taxonomy_string like '%276400000X%' or flattened_taxonomy_string like '%281P00000X%' or flattened_taxonomy_string like '%281PC2000X%' or flattened_taxonomy_string like '%282E00000X%' or flattened_taxonomy_string like '%282J00000X%' or flattened_taxonomy_string like '%282N00000X%' or flattened_taxonomy_string like '%282NC0060X%' or flattened_taxonomy_string like '%282NC2000X%' or flattened_taxonomy_string like '%282NR1301X%' or flattened_taxonomy_string like '%282NW0100X%' or flattened_taxonomy_string like '%283Q00000X%' or flattened_taxonomy_string like '%283X00000X%' or flattened_taxonomy_string like '%283XC2000X%' or flattened_taxonomy_string like '%284300000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_laboratory = case when  flattened_taxonomy_string like '%291900000X%' or flattened_taxonomy_string like '%291U00000X%' or flattened_taxonomy_string like '%292200000X%' or flattened_taxonomy_string like '%293D00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_laboratory = case when  flattened_taxonomy_string like '%291900000X%' or flattened_taxonomy_string like '%291U00000X%' or flattened_taxonomy_string like '%292200000X%' or flattened_taxonomy_string like '%293D00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_managed_care_organization = case when  flattened_taxonomy_string like '%302F00000X%' or flattened_taxonomy_string like '%302R00000X%' or flattened_taxonomy_string like '%305R00000X%' or flattened_taxonomy_string like '%305S00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_managed_care_organization = case when  flattened_taxonomy_string like '%302F00000X%' or flattened_taxonomy_string like '%302R00000X%' or flattened_taxonomy_string like '%305R00000X%' or flattened_taxonomy_string like '%305S00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_nursing_care_facility = case when  flattened_taxonomy_string like '%310400000X%' or flattened_taxonomy_string like '%3104A0625X%' or flattened_taxonomy_string like '%3104A0630X%' or flattened_taxonomy_string like '%310500000X%' or flattened_taxonomy_string like '%311500000X%' or flattened_taxonomy_string like '%311Z00000X%' or flattened_taxonomy_string like '%311ZA0620X%' or flattened_taxonomy_string like '%313M00000X%' or flattened_taxonomy_string like '%314000000X%' or flattened_taxonomy_string like '%3140N1450X%' or flattened_taxonomy_string like '%315D00000X%' or flattened_taxonomy_string like '%315P00000X%' or flattened_taxonomy_string like '%317400000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_nursing_care_facility = case when  flattened_taxonomy_string like '%310400000X%' or flattened_taxonomy_string like '%3104A0625X%' or flattened_taxonomy_string like '%3104A0630X%' or flattened_taxonomy_string like '%310500000X%' or flattened_taxonomy_string like '%311500000X%' or flattened_taxonomy_string like '%311Z00000X%' or flattened_taxonomy_string like '%311ZA0620X%' or flattened_taxonomy_string like '%313M00000X%' or flattened_taxonomy_string like '%314000000X%' or flattened_taxonomy_string like '%3140N1450X%' or flattened_taxonomy_string like '%315D00000X%' or flattened_taxonomy_string like '%315P00000X%' or flattened_taxonomy_string like '%317400000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_residential_treatment_facility = case when  flattened_taxonomy_string like '%320600000X%' or flattened_taxonomy_string like '%320700000X%' or flattened_taxonomy_string like '%320800000X%' or flattened_taxonomy_string like '%320900000X%' or flattened_taxonomy_string like '%322D00000X%' or flattened_taxonomy_string like '%323P00000X%' or flattened_taxonomy_string like '%324500000X%' or flattened_taxonomy_string like '%3245S0500X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_residential_treatment_facility = case when  flattened_taxonomy_string like '%320600000X%' or flattened_taxonomy_string like '%320700000X%' or flattened_taxonomy_string like '%320800000X%' or flattened_taxonomy_string like '%320900000X%' or flattened_taxonomy_string like '%322D00000X%' or flattened_taxonomy_string like '%323P00000X%' or flattened_taxonomy_string like '%324500000X%' or flattened_taxonomy_string like '%3245S0500X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_student = case when  flattened_taxonomy_string like '%390200000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_student = case when  flattened_taxonomy_string like '%390200000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_supplier = case when  flattened_taxonomy_string like '%331L00000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_supplier = case when  flattened_taxonomy_string like '%331L00000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_physician = case when  flattened_taxonomy_string like '%202C00000X%' or flattened_taxonomy_string like '%202K00000X%' or flattened_taxonomy_string like '%204C00000X%' or flattened_taxonomy_string like '%204D00000X%' or flattened_taxonomy_string like '%204E00000X%' or flattened_taxonomy_string like '%204F00000X%' or flattened_taxonomy_string like '%204R00000X%' or flattened_taxonomy_string like '%207K00000X%' or flattened_taxonomy_string like '%207KA0200X%' or flattened_taxonomy_string like '%207KI0005X%' or flattened_taxonomy_string like '%207L00000X%' or flattened_taxonomy_string like '%207LA0401X%' or flattened_taxonomy_string like '%207LC0200X%' or flattened_taxonomy_string like '%207LH0002X%' or flattened_taxonomy_string like '%207LP2900X%' or flattened_taxonomy_string like '%207LP3000X%' or flattened_taxonomy_string like '%207N00000X%' or flattened_taxonomy_string like '%207ND0101X%' or flattened_taxonomy_string like '%207ND0900X%' or flattened_taxonomy_string like '%207NI0002X%' or flattened_taxonomy_string like '%207NP0225X%' or flattened_taxonomy_string like '%207NS0135X%' or flattened_taxonomy_string like '%207P00000X%' or flattened_taxonomy_string like '%207PE0004X%' or flattened_taxonomy_string like '%207PE0005X%' or flattened_taxonomy_string like '%207PH0002X%' or flattened_taxonomy_string like '%207PP0204X%' or flattened_taxonomy_string like '%207PS0010X%' or flattened_taxonomy_string like '%207PT0002X%' or flattened_taxonomy_string like '%207Q00000X%' or flattened_taxonomy_string like '%207QA0000X%' or flattened_taxonomy_string like '%207QA0401X%' or flattened_taxonomy_string like '%207QA0505X%' or flattened_taxonomy_string like '%207QB0002X%' or flattened_taxonomy_string like '%207QG0300X%' or flattened_taxonomy_string like '%207QH0002X%' or flattened_taxonomy_string like '%207QS0010X%' or flattened_taxonomy_string like '%207QS1201X%' or flattened_taxonomy_string like '%207R00000X%' or flattened_taxonomy_string like '%207RA0000X%' or flattened_taxonomy_string like '%207RA0201X%' or flattened_taxonomy_string like '%207RA0401X%' or flattened_taxonomy_string like '%207RB0002X%' or flattened_taxonomy_string like '%207RC0000X%' or flattened_taxonomy_string like '%207RC0001X%' or flattened_taxonomy_string like '%207RC0200X%' or flattened_taxonomy_string like '%207RE0101X%' or flattened_taxonomy_string like '%207RG0100X%' or flattened_taxonomy_string like '%207RG0300X%' or flattened_taxonomy_string like '%207RH0000X%' or flattened_taxonomy_string like '%207RH0002X%' or flattened_taxonomy_string like '%207RH0003X%' or flattened_taxonomy_string like '%207RH0005X%' or flattened_taxonomy_string like '%207RI0001X%' or flattened_taxonomy_string like '%207RI0008X%' or flattened_taxonomy_string like '%207RI0011X%' or flattened_taxonomy_string like '%207RI0200X%' or flattened_taxonomy_string like '%207RM1200X%' or flattened_taxonomy_string like '%207RN0300X%' or flattened_taxonomy_string like '%207RP1001X%' or flattened_taxonomy_string like '%207RR0500X%' or flattened_taxonomy_string like '%207RS0010X%' or flattened_taxonomy_string like '%207RS0012X%' or flattened_taxonomy_string like '%207RT0003X%' or flattened_taxonomy_string like '%207RX0202X%' or flattened_taxonomy_string like '%207SC0300X%' or flattened_taxonomy_string like '%207SG0201X%' or flattened_taxonomy_string like '%207SG0202X%' or flattened_taxonomy_string like '%207SG0203X%' or flattened_taxonomy_string like '%207SG0205X%' or flattened_taxonomy_string like '%207SM0001X%' or flattened_taxonomy_string like '%207T00000X%' or flattened_taxonomy_string like '%207U00000X%' or flattened_taxonomy_string like '%207UN0901X%' or flattened_taxonomy_string like '%207UN0902X%' or flattened_taxonomy_string like '%207UN0903X%' or flattened_taxonomy_string like '%207V00000X%' or flattened_taxonomy_string like '%207VB0002X%' or flattened_taxonomy_string like '%207VC0200X%' or flattened_taxonomy_string like '%207VE0102X%' or flattened_taxonomy_string like '%207VF0040X%' or flattened_taxonomy_string like '%207VG0400X%' or flattened_taxonomy_string like '%207VH0002X%' or flattened_taxonomy_string like '%207VM0101X%' or flattened_taxonomy_string like '%207VX0000X%' or flattened_taxonomy_string like '%207VX0201X%' or flattened_taxonomy_string like '%207W00000X%' or flattened_taxonomy_string like '%207X00000X%' or flattened_taxonomy_string like '%207XP3100X%' or flattened_taxonomy_string like '%207XS0106X%' or flattened_taxonomy_string like '%207XS0114X%' or flattened_taxonomy_string like '%207XS0117X%' or flattened_taxonomy_string like '%207XX0004X%' or flattened_taxonomy_string like '%207XX0005X%' or flattened_taxonomy_string like '%207XX0801X%' or flattened_taxonomy_string like '%207Y00000X%' or flattened_taxonomy_string like '%207YP0228X%' or flattened_taxonomy_string like '%207YS0012X%' or flattened_taxonomy_string like '%207YS0123X%' or flattened_taxonomy_string like '%207YX0007X%' or flattened_taxonomy_string like '%207YX0602X%' or flattened_taxonomy_string like '%207YX0901X%' or flattened_taxonomy_string like '%207YX0905X%' or flattened_taxonomy_string like '%207ZB0001X%' or flattened_taxonomy_string like '%207ZC0006X%' or flattened_taxonomy_string like '%207ZC0500X%' or flattened_taxonomy_string like '%207ZD0900X%' or flattened_taxonomy_string like '%207ZF0201X%' or flattened_taxonomy_string like '%207ZH0000X%' or flattened_taxonomy_string like '%207ZI0100X%' or flattened_taxonomy_string like '%207ZM0300X%' or flattened_taxonomy_string like '%207ZN0500X%' or flattened_taxonomy_string like '%207ZP0007X%' or flattened_taxonomy_string like '%207ZP0101X%' or flattened_taxonomy_string like '%207ZP0102X%' or flattened_taxonomy_string like '%207ZP0104X%' or flattened_taxonomy_string like '%207ZP0105X%' or flattened_taxonomy_string like '%207ZP0213X%' or flattened_taxonomy_string like '%208000000X%' or flattened_taxonomy_string like '%2080A0000X%' or flattened_taxonomy_string like '%2080C0008X%' or flattened_taxonomy_string like '%2080H0002X%' or flattened_taxonomy_string like '%2080I0007X%' or flattened_taxonomy_string like '%2080N0001X%' or flattened_taxonomy_string like '%2080P0006X%' or flattened_taxonomy_string like '%2080P0008X%' or flattened_taxonomy_string like '%2080P0201X%' or flattened_taxonomy_string like '%2080P0202X%' or flattened_taxonomy_string like '%2080P0203X%' or flattened_taxonomy_string like '%2080P0204X%' or flattened_taxonomy_string like '%2080P0205X%' or flattened_taxonomy_string like '%2080P0206X%' or flattened_taxonomy_string like '%2080P0207X%' or flattened_taxonomy_string like '%2080P0208X%' or flattened_taxonomy_string like '%2080P0210X%' or flattened_taxonomy_string like '%2080P0214X%' or flattened_taxonomy_string like '%2080P0216X%' or flattened_taxonomy_string like '%2080S0010X%' or flattened_taxonomy_string like '%2080S0012X%' or flattened_taxonomy_string like '%2080T0002X%' or flattened_taxonomy_string like '%2080T0004X%' or flattened_taxonomy_string like '%208100000X%' or flattened_taxonomy_string like '%2081H0002X%' or flattened_taxonomy_string like '%2081N0008X%' or flattened_taxonomy_string like '%2081P0004X%' or flattened_taxonomy_string like '%2081P0010X%' or flattened_taxonomy_string like '%2081P2900X%' or flattened_taxonomy_string like '%2081S0010X%' or flattened_taxonomy_string like '%208200000X%' or flattened_taxonomy_string like '%2082S0099X%' or flattened_taxonomy_string like '%2082S0105X%' or flattened_taxonomy_string like '%2083A0100X%' or flattened_taxonomy_string like '%2083P0011X%' or flattened_taxonomy_string like '%2083P0500X%' or flattened_taxonomy_string like '%2083P0901X%' or flattened_taxonomy_string like '%2083S0010X%' or flattened_taxonomy_string like '%2083T0002X%' or flattened_taxonomy_string like '%2083X0100X%' or flattened_taxonomy_string like '%2084A0401X%' or flattened_taxonomy_string like '%2084B0002X%' or flattened_taxonomy_string like '%2084B0040X%' or flattened_taxonomy_string like '%2084D0003X%' or flattened_taxonomy_string like '%2084F0202X%' or flattened_taxonomy_string like '%2084H0002X%' or flattened_taxonomy_string like '%2084N0008X%' or flattened_taxonomy_string like '%2084N0400X%' or flattened_taxonomy_string like '%2084N0402X%' or flattened_taxonomy_string like '%2084N0600X%' or flattened_taxonomy_string like '%2084P0005X%' or flattened_taxonomy_string like '%2084P0015X%' or flattened_taxonomy_string like '%2084P0800X%' or flattened_taxonomy_string like '%2084P0802X%' or flattened_taxonomy_string like '%2084P0804X%' or flattened_taxonomy_string like '%2084P0805X%' or flattened_taxonomy_string like '%2084P2900X%' or flattened_taxonomy_string like '%2084S0010X%' or flattened_taxonomy_string like '%2084S0012X%' or flattened_taxonomy_string like '%2084V0102X%' or flattened_taxonomy_string like '%2085B0100X%' or flattened_taxonomy_string like '%2085D0003X%' or flattened_taxonomy_string like '%2085H0002X%' or flattened_taxonomy_string like '%2085N0700X%' or flattened_taxonomy_string like '%2085N0904X%' or flattened_taxonomy_string like '%2085P0229X%' or flattened_taxonomy_string like '%2085R0001X%' or flattened_taxonomy_string like '%2085R0202X%' or flattened_taxonomy_string like '%2085R0203X%' or flattened_taxonomy_string like '%2085R0204X%' or flattened_taxonomy_string like '%2085R0205X%' or flattened_taxonomy_string like '%2085U0001X%' or flattened_taxonomy_string like '%208600000X%' or flattened_taxonomy_string like '%2086H0002X%' or flattened_taxonomy_string like '%2086S0102X%' or flattened_taxonomy_string like '%2086S0105X%' or flattened_taxonomy_string like '%2086S0120X%' or flattened_taxonomy_string like '%2086S0122X%' or flattened_taxonomy_string like '%2086S0127X%' or flattened_taxonomy_string like '%2086S0129X%' or flattened_taxonomy_string like '%2086X0206X%' or flattened_taxonomy_string like '%208800000X%' or flattened_taxonomy_string like '%2088F0040X%' or flattened_taxonomy_string like '%2088P0231X%' or flattened_taxonomy_string like '%208C00000X%' or flattened_taxonomy_string like '%208D00000X%' or flattened_taxonomy_string like '%208G00000X%' or flattened_taxonomy_string like '%208M00000X%' or flattened_taxonomy_string like '%208U00000X%' or flattened_taxonomy_string like '%208VP0000X%' or flattened_taxonomy_string like '%208VP0014X%' or flattened_taxonomy_string like '%209800000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_physician = case when  flattened_taxonomy_string like '%202C00000X%' or flattened_taxonomy_string like '%202K00000X%' or flattened_taxonomy_string like '%204C00000X%' or flattened_taxonomy_string like '%204D00000X%' or flattened_taxonomy_string like '%204E00000X%' or flattened_taxonomy_string like '%204F00000X%' or flattened_taxonomy_string like '%204R00000X%' or flattened_taxonomy_string like '%207K00000X%' or flattened_taxonomy_string like '%207KA0200X%' or flattened_taxonomy_string like '%207KI0005X%' or flattened_taxonomy_string like '%207L00000X%' or flattened_taxonomy_string like '%207LA0401X%' or flattened_taxonomy_string like '%207LC0200X%' or flattened_taxonomy_string like '%207LH0002X%' or flattened_taxonomy_string like '%207LP2900X%' or flattened_taxonomy_string like '%207LP3000X%' or flattened_taxonomy_string like '%207N00000X%' or flattened_taxonomy_string like '%207ND0101X%' or flattened_taxonomy_string like '%207ND0900X%' or flattened_taxonomy_string like '%207NI0002X%' or flattened_taxonomy_string like '%207NP0225X%' or flattened_taxonomy_string like '%207NS0135X%' or flattened_taxonomy_string like '%207P00000X%' or flattened_taxonomy_string like '%207PE0004X%' or flattened_taxonomy_string like '%207PE0005X%' or flattened_taxonomy_string like '%207PH0002X%' or flattened_taxonomy_string like '%207PP0204X%' or flattened_taxonomy_string like '%207PS0010X%' or flattened_taxonomy_string like '%207PT0002X%' or flattened_taxonomy_string like '%207Q00000X%' or flattened_taxonomy_string like '%207QA0000X%' or flattened_taxonomy_string like '%207QA0401X%' or flattened_taxonomy_string like '%207QA0505X%' or flattened_taxonomy_string like '%207QB0002X%' or flattened_taxonomy_string like '%207QG0300X%' or flattened_taxonomy_string like '%207QH0002X%' or flattened_taxonomy_string like '%207QS0010X%' or flattened_taxonomy_string like '%207QS1201X%' or flattened_taxonomy_string like '%207R00000X%' or flattened_taxonomy_string like '%207RA0000X%' or flattened_taxonomy_string like '%207RA0201X%' or flattened_taxonomy_string like '%207RA0401X%' or flattened_taxonomy_string like '%207RB0002X%' or flattened_taxonomy_string like '%207RC0000X%' or flattened_taxonomy_string like '%207RC0001X%' or flattened_taxonomy_string like '%207RC0200X%' or flattened_taxonomy_string like '%207RE0101X%' or flattened_taxonomy_string like '%207RG0100X%' or flattened_taxonomy_string like '%207RG0300X%' or flattened_taxonomy_string like '%207RH0000X%' or flattened_taxonomy_string like '%207RH0002X%' or flattened_taxonomy_string like '%207RH0003X%' or flattened_taxonomy_string like '%207RH0005X%' or flattened_taxonomy_string like '%207RI0001X%' or flattened_taxonomy_string like '%207RI0008X%' or flattened_taxonomy_string like '%207RI0011X%' or flattened_taxonomy_string like '%207RI0200X%' or flattened_taxonomy_string like '%207RM1200X%' or flattened_taxonomy_string like '%207RN0300X%' or flattened_taxonomy_string like '%207RP1001X%' or flattened_taxonomy_string like '%207RR0500X%' or flattened_taxonomy_string like '%207RS0010X%' or flattened_taxonomy_string like '%207RS0012X%' or flattened_taxonomy_string like '%207RT0003X%' or flattened_taxonomy_string like '%207RX0202X%' or flattened_taxonomy_string like '%207SC0300X%' or flattened_taxonomy_string like '%207SG0201X%' or flattened_taxonomy_string like '%207SG0202X%' or flattened_taxonomy_string like '%207SG0203X%' or flattened_taxonomy_string like '%207SG0205X%' or flattened_taxonomy_string like '%207SM0001X%' or flattened_taxonomy_string like '%207T00000X%' or flattened_taxonomy_string like '%207U00000X%' or flattened_taxonomy_string like '%207UN0901X%' or flattened_taxonomy_string like '%207UN0902X%' or flattened_taxonomy_string like '%207UN0903X%' or flattened_taxonomy_string like '%207V00000X%' or flattened_taxonomy_string like '%207VB0002X%' or flattened_taxonomy_string like '%207VC0200X%' or flattened_taxonomy_string like '%207VE0102X%' or flattened_taxonomy_string like '%207VF0040X%' or flattened_taxonomy_string like '%207VG0400X%' or flattened_taxonomy_string like '%207VH0002X%' or flattened_taxonomy_string like '%207VM0101X%' or flattened_taxonomy_string like '%207VX0000X%' or flattened_taxonomy_string like '%207VX0201X%' or flattened_taxonomy_string like '%207W00000X%' or flattened_taxonomy_string like '%207X00000X%' or flattened_taxonomy_string like '%207XP3100X%' or flattened_taxonomy_string like '%207XS0106X%' or flattened_taxonomy_string like '%207XS0114X%' or flattened_taxonomy_string like '%207XS0117X%' or flattened_taxonomy_string like '%207XX0004X%' or flattened_taxonomy_string like '%207XX0005X%' or flattened_taxonomy_string like '%207XX0801X%' or flattened_taxonomy_string like '%207Y00000X%' or flattened_taxonomy_string like '%207YP0228X%' or flattened_taxonomy_string like '%207YS0012X%' or flattened_taxonomy_string like '%207YS0123X%' or flattened_taxonomy_string like '%207YX0007X%' or flattened_taxonomy_string like '%207YX0602X%' or flattened_taxonomy_string like '%207YX0901X%' or flattened_taxonomy_string like '%207YX0905X%' or flattened_taxonomy_string like '%207ZB0001X%' or flattened_taxonomy_string like '%207ZC0006X%' or flattened_taxonomy_string like '%207ZC0500X%' or flattened_taxonomy_string like '%207ZD0900X%' or flattened_taxonomy_string like '%207ZF0201X%' or flattened_taxonomy_string like '%207ZH0000X%' or flattened_taxonomy_string like '%207ZI0100X%' or flattened_taxonomy_string like '%207ZM0300X%' or flattened_taxonomy_string like '%207ZN0500X%' or flattened_taxonomy_string like '%207ZP0007X%' or flattened_taxonomy_string like '%207ZP0101X%' or flattened_taxonomy_string like '%207ZP0102X%' or flattened_taxonomy_string like '%207ZP0104X%' or flattened_taxonomy_string like '%207ZP0105X%' or flattened_taxonomy_string like '%207ZP0213X%' or flattened_taxonomy_string like '%208000000X%' or flattened_taxonomy_string like '%2080A0000X%' or flattened_taxonomy_string like '%2080C0008X%' or flattened_taxonomy_string like '%2080H0002X%' or flattened_taxonomy_string like '%2080I0007X%' or flattened_taxonomy_string like '%2080N0001X%' or flattened_taxonomy_string like '%2080P0006X%' or flattened_taxonomy_string like '%2080P0008X%' or flattened_taxonomy_string like '%2080P0201X%' or flattened_taxonomy_string like '%2080P0202X%' or flattened_taxonomy_string like '%2080P0203X%' or flattened_taxonomy_string like '%2080P0204X%' or flattened_taxonomy_string like '%2080P0205X%' or flattened_taxonomy_string like '%2080P0206X%' or flattened_taxonomy_string like '%2080P0207X%' or flattened_taxonomy_string like '%2080P0208X%' or flattened_taxonomy_string like '%2080P0210X%' or flattened_taxonomy_string like '%2080P0214X%' or flattened_taxonomy_string like '%2080P0216X%' or flattened_taxonomy_string like '%2080S0010X%' or flattened_taxonomy_string like '%2080S0012X%' or flattened_taxonomy_string like '%2080T0002X%' or flattened_taxonomy_string like '%2080T0004X%' or flattened_taxonomy_string like '%208100000X%' or flattened_taxonomy_string like '%2081H0002X%' or flattened_taxonomy_string like '%2081N0008X%' or flattened_taxonomy_string like '%2081P0004X%' or flattened_taxonomy_string like '%2081P0010X%' or flattened_taxonomy_string like '%2081P2900X%' or flattened_taxonomy_string like '%2081S0010X%' or flattened_taxonomy_string like '%208200000X%' or flattened_taxonomy_string like '%2082S0099X%' or flattened_taxonomy_string like '%2082S0105X%' or flattened_taxonomy_string like '%2083A0100X%' or flattened_taxonomy_string like '%2083P0011X%' or flattened_taxonomy_string like '%2083P0500X%' or flattened_taxonomy_string like '%2083P0901X%' or flattened_taxonomy_string like '%2083S0010X%' or flattened_taxonomy_string like '%2083T0002X%' or flattened_taxonomy_string like '%2083X0100X%' or flattened_taxonomy_string like '%2084A0401X%' or flattened_taxonomy_string like '%2084B0002X%' or flattened_taxonomy_string like '%2084B0040X%' or flattened_taxonomy_string like '%2084D0003X%' or flattened_taxonomy_string like '%2084F0202X%' or flattened_taxonomy_string like '%2084H0002X%' or flattened_taxonomy_string like '%2084N0008X%' or flattened_taxonomy_string like '%2084N0400X%' or flattened_taxonomy_string like '%2084N0402X%' or flattened_taxonomy_string like '%2084N0600X%' or flattened_taxonomy_string like '%2084P0005X%' or flattened_taxonomy_string like '%2084P0015X%' or flattened_taxonomy_string like '%2084P0800X%' or flattened_taxonomy_string like '%2084P0802X%' or flattened_taxonomy_string like '%2084P0804X%' or flattened_taxonomy_string like '%2084P0805X%' or flattened_taxonomy_string like '%2084P2900X%' or flattened_taxonomy_string like '%2084S0010X%' or flattened_taxonomy_string like '%2084S0012X%' or flattened_taxonomy_string like '%2084V0102X%' or flattened_taxonomy_string like '%2085B0100X%' or flattened_taxonomy_string like '%2085D0003X%' or flattened_taxonomy_string like '%2085H0002X%' or flattened_taxonomy_string like '%2085N0700X%' or flattened_taxonomy_string like '%2085N0904X%' or flattened_taxonomy_string like '%2085P0229X%' or flattened_taxonomy_string like '%2085R0001X%' or flattened_taxonomy_string like '%2085R0202X%' or flattened_taxonomy_string like '%2085R0203X%' or flattened_taxonomy_string like '%2085R0204X%' or flattened_taxonomy_string like '%2085R0205X%' or flattened_taxonomy_string like '%2085U0001X%' or flattened_taxonomy_string like '%208600000X%' or flattened_taxonomy_string like '%2086H0002X%' or flattened_taxonomy_string like '%2086S0102X%' or flattened_taxonomy_string like '%2086S0105X%' or flattened_taxonomy_string like '%2086S0120X%' or flattened_taxonomy_string like '%2086S0122X%' or flattened_taxonomy_string like '%2086S0127X%' or flattened_taxonomy_string like '%2086S0129X%' or flattened_taxonomy_string like '%2086X0206X%' or flattened_taxonomy_string like '%208800000X%' or flattened_taxonomy_string like '%2088F0040X%' or flattened_taxonomy_string like '%2088P0231X%' or flattened_taxonomy_string like '%208C00000X%' or flattened_taxonomy_string like '%208D00000X%' or flattened_taxonomy_string like '%208G00000X%' or flattened_taxonomy_string like '%208M00000X%' or flattened_taxonomy_string like '%208U00000X%' or flattened_taxonomy_string like '%208VP0000X%' or flattened_taxonomy_string like '%208VP0014X%' or flattened_taxonomy_string like '%209800000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_addiction_medicine = case when  flattened_taxonomy_string like '%207RA0401X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_addiction_medicine = case when  flattened_taxonomy_string like '%207RA0401X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_bariatric_medicine = case when  flattened_taxonomy_string like '%207RB0002X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_bariatric_medicine = case when  flattened_taxonomy_string like '%207RB0002X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_body_imaging = case when  flattened_taxonomy_string like '%2085B0100X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_body_imaging = case when  flattened_taxonomy_string like '%2085B0100X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_cardiovascular_disease = case when  flattened_taxonomy_string like '%207RC0000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_cardiovascular_disease = case when  flattened_taxonomy_string like '%207RC0000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_clinical_and_laboratory_immunology = case when  flattened_taxonomy_string like '%207RI0001X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_clinical_and_laboratory_immunology = case when  flattened_taxonomy_string like '%207RI0001X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_clinical_biochemical_genetics = case when  flattened_taxonomy_string like '%207SG0202X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_clinical_biochemical_genetics = case when  flattened_taxonomy_string like '%207SG0202X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_clinical_cardiac_electrophysiology = case when  flattened_taxonomy_string like '%207RC0001X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_clinical_cardiac_electrophysiology = case when  flattened_taxonomy_string like '%207RC0001X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_clinical_cytogenetic = case when  flattened_taxonomy_string like '%207SC0300X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_clinical_cytogenetic = case when  flattened_taxonomy_string like '%207SC0300X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_clinical_genetics_md = case when  flattened_taxonomy_string like '%207SG0201X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_clinical_genetics_md = case when  flattened_taxonomy_string like '%207SG0201X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_clinical_molecular_genetics = case when  flattened_taxonomy_string like '%207SG0203X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_clinical_molecular_genetics = case when  flattened_taxonomy_string like '%207SG0203X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_critical_care_medicine = case when  flattened_taxonomy_string like '%207RC0200X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_critical_care_medicine = case when  flattened_taxonomy_string like '%207RC0200X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_dermatopathology = case when  flattened_taxonomy_string like '%207ND0900X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_dermatopathology = case when  flattened_taxonomy_string like '%207ND0900X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_diagnostic_neuroimaging = case when  flattened_taxonomy_string like '%2085D0003X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_diagnostic_neuroimaging = case when  flattened_taxonomy_string like '%2085D0003X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_diagnostic_radiology = case when  flattened_taxonomy_string like '%2085R0202X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_diagnostic_radiology = case when  flattened_taxonomy_string like '%2085R0202X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_diagnostic_ultrasound = case when  flattened_taxonomy_string like '%2085U0001X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_diagnostic_ultrasound = case when  flattened_taxonomy_string like '%2085U0001X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_endocrinology_diabetes_and_metabolism = case when  flattened_taxonomy_string like '%207RE0101X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_endocrinology_diabetes_and_metabolism = case when  flattened_taxonomy_string like '%207RE0101X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_endodontics = case when  flattened_taxonomy_string like '%1223E0200X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_endodontics = case when  flattened_taxonomy_string like '%1223E0200X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_gastroenterology = case when  flattened_taxonomy_string like '%207RG0100X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_gastroenterology = case when  flattened_taxonomy_string like '%207RG0100X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_geriatric_medicine = case when  flattened_taxonomy_string like '%207RG0300X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_geriatric_medicine = case when  flattened_taxonomy_string like '%207RG0300X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_hematology = case when  flattened_taxonomy_string like '%207RH0000X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_hematology = case when  flattened_taxonomy_string like '%207RH0000X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_hematology_and_oncology = case when  flattened_taxonomy_string like '%207RH0003X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_hematology_and_oncology = case when  flattened_taxonomy_string like '%207RH0003X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_hepatology = case when  flattened_taxonomy_string like '%207RI0008X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_hepatology = case when  flattened_taxonomy_string like '%207RI0008X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_hospice_and_palliative_medicine = case when  flattened_taxonomy_string like '%207RH0002X%' or flattened_taxonomy_string like '%2085H0002X%' or flattened_taxonomy_string like '%2086H0002X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_hospice_and_palliative_medicine = case when  flattened_taxonomy_string like '%207RH0002X%' or flattened_taxonomy_string like '%2085H0002X%' or flattened_taxonomy_string like '%2086H0002X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_hypertension_specialist = case when  flattened_taxonomy_string like '%207RH0005X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_hypertension_specialist = case when  flattened_taxonomy_string like '%207RH0005X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_infectious_disease = case when  flattened_taxonomy_string like '%207RI0200X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_infectious_disease = case when  flattened_taxonomy_string like '%207RI0200X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_interventional_cardiology = case when  flattened_taxonomy_string like '%207RI0011X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_interventional_cardiology = case when  flattened_taxonomy_string like '%207RI0011X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_interventional_pain_medicine = case when  flattened_taxonomy_string like '%208VP0014X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_interventional_pain_medicine = case when  flattened_taxonomy_string like '%208VP0014X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_mohsmicrographic_surgery = case when  flattened_taxonomy_string like '%207ND0101X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_mohsmicrographic_surgery = case when  flattened_taxonomy_string like '%207ND0101X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_magnetic_resonance_imaging_mri = case when  flattened_taxonomy_string like '%207RM1200X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_magnetic_resonance_imaging_mri = case when  flattened_taxonomy_string like '%207RM1200X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_medical_oncology = case when  flattened_taxonomy_string like '%207RX0202X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_medical_oncology = case when  flattened_taxonomy_string like '%207RX0202X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_molecular_genetic_pathology = case when  flattened_taxonomy_string like '%207SM0001X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_molecular_genetic_pathology = case when  flattened_taxonomy_string like '%207SM0001X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_nephrology = case when  flattened_taxonomy_string like '%207RN0300X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_nephrology = case when  flattened_taxonomy_string like '%207RN0300X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_neurology = case when  flattened_taxonomy_string like '%2084N0400X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_neurology = case when  flattened_taxonomy_string like '%2084N0400X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_neuroradiology = case when  flattened_taxonomy_string like '%2085N0700X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_neuroradiology = case when  flattened_taxonomy_string like '%2085N0700X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_nuclear_radiology = case when  flattened_taxonomy_string like '%2085N0904X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_nuclear_radiology = case when  flattened_taxonomy_string like '%2085N0904X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_oral_and_maxillofacial_pathology = case when  flattened_taxonomy_string like '%1223P0106X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_oral_and_maxillofacial_pathology = case when  flattened_taxonomy_string like '%1223P0106X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_oral_and_maxillofacial_radiology = case when  flattened_taxonomy_string like '%1223X0008X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_oral_and_maxillofacial_radiology = case when  flattened_taxonomy_string like '%1223X0008X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_oral_and_maxillofacial_surgery = case when  flattened_taxonomy_string like '%1223S0112X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_oral_and_maxillofacial_surgery = case when  flattened_taxonomy_string like '%1223S0112X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_orthodontics_and_dentofacial_orthopedics = case when  flattened_taxonomy_string like '%1223X0400X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_orthodontics_and_dentofacial_orthopedics = case when  flattened_taxonomy_string like '%1223X0400X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_pediatric_dentistry = case when  flattened_taxonomy_string like '%1223P0221X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_pediatric_dentistry = case when  flattened_taxonomy_string like '%1223P0221X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_pediatric_radiology = case when  flattened_taxonomy_string like '%2085P0229X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_pediatric_radiology = case when  flattened_taxonomy_string like '%2085P0229X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_pediatric_surgery = case when  flattened_taxonomy_string like '%2086S0120X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_pediatric_surgery = case when  flattened_taxonomy_string like '%2086S0120X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_periodontics = case when  flattened_taxonomy_string like '%1223P0300X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_periodontics = case when  flattened_taxonomy_string like '%1223P0300X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_phd_medical_genetics = case when  flattened_taxonomy_string like '%207SG0205X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_phd_medical_genetics = case when  flattened_taxonomy_string like '%207SG0205X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_plastic_and_reconstructive_surgery = case when  flattened_taxonomy_string like '%2086S0122X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_plastic_and_reconstructive_surgery = case when  flattened_taxonomy_string like '%2086S0122X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_prosthodontics = case when  flattened_taxonomy_string like '%1223P0700X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_prosthodontics = case when  flattened_taxonomy_string like '%1223P0700X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_psychiatry = case when  flattened_taxonomy_string like '%2084P0800X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_psychiatry = case when  flattened_taxonomy_string like '%2084P0800X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_pulmonary_disease = case when  flattened_taxonomy_string like '%207RP1001X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_pulmonary_disease = case when  flattened_taxonomy_string like '%207RP1001X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_radiation_oncology = case when  flattened_taxonomy_string like '%2085R0001X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_radiation_oncology = case when  flattened_taxonomy_string like '%2085R0001X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_radiological_physics = case when  flattened_taxonomy_string like '%2085R0205X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_radiological_physics = case when  flattened_taxonomy_string like '%2085R0205X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_rheumatology = case when  flattened_taxonomy_string like '%207RR0500X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_rheumatology = case when  flattened_taxonomy_string like '%207RR0500X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_sleep_medicine = case when  flattened_taxonomy_string like '%207RS0012X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_sleep_medicine = case when  flattened_taxonomy_string like '%207RS0012X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_sports_medicine = case when  flattened_taxonomy_string like '%207RS0010X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_sports_medicine = case when  flattened_taxonomy_string like '%207RS0010X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_surgery_of_the_hand = case when  flattened_taxonomy_string like '%2086S0105X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_surgery_of_the_hand = case when  flattened_taxonomy_string like '%2086S0105X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_surgical_critical_care = case when  flattened_taxonomy_string like '%2086S0102X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_surgical_critical_care = case when  flattened_taxonomy_string like '%2086S0102X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_surgical_oncology = case when  flattened_taxonomy_string like '%2086X0206X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_surgical_oncology = case when  flattened_taxonomy_string like '%2086X0206X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_therapeutic_radiology = case when  flattened_taxonomy_string like '%2085R0203X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_therapeutic_radiology = case when  flattened_taxonomy_string like '%2085R0203X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_transplant_hepatology = case when  flattened_taxonomy_string like '%207RT0003X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_transplant_hepatology = case when  flattened_taxonomy_string like '%207RT0003X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_trauma_surgery = case when  flattened_taxonomy_string like '%2086S0127X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_trauma_surgery = case when  flattened_taxonomy_string like '%2086S0127X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_vascular_and_interventional_radiology = case when  flattened_taxonomy_string like '%2085R0204X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_vascular_and_interventional_radiology = case when  flattened_taxonomy_string like '%2085R0204X%' then 1 else 0 end;
 
-update healthcare_provider_taxonomy_processed set is_vascular_surgery = case when  flattened_taxonomy_string like '%2086S0129X%' then 1 else 0 end;
+update tmp_healthcare_provider_taxonomy_processed set is_vascular_surgery = case when  flattened_taxonomy_string like '%2086S0129X%' then 1 else 0 end;
 
 /* This holds the contact information for the provider */
-drop table if exists nppes_contact;
-create table nppes_contact (
+drop table if exists tmp_nppes_contact;
+create table tmp_nppes_contact (
  id  integer auto_increment primary key,
  address_type varchar(15),
  npi char(10),
@@ -1770,48 +1773,45 @@ create table nppes_contact (
 );
 
 /* Insert the business addresses into the contact table */
-insert into nppes_contact (address_type, npi, first_line, second_line, city, state, postal_code, country_code, phone, fax)
+insert into tmp_nppes_contact (address_type, npi, first_line, second_line, city, state, postal_code, country_code, phone, fax)
   select 'business',nh.npi, nh.Provider_First_Line_Business_Mailing_Address, nh.Provider_Second_Line_Business_Mailing_Address, nh.Provider_Business_Mailing_Address_City_Name,
     nh.Provider_Business_Mailing_Address_State_Name, nh.Provider_Business_Mailing_Address_Postal_Code,
     nh.Provider_Business_Mailing_Address_Country_Cod,
     nh.Provider_Business_Mailing_Address_Telephone_Number, nh.Provider_Business_Mailing_Address_Fax_Number
-    from nppes_header nh
+    from tmp_NPPES_header nh
     ;
 
 /* Insert the practice address into the contact table */
-insert into nppes_contact (address_type, npi, first_line, second_line, city, state, postal_code, country_code, phone, fax)
+insert into tmp_nppes_contact (address_type, npi, first_line, second_line, city, state, postal_code, country_code, phone, fax)
   select 'practice', nh.NPI, nh.Provider_First_Line_Business_Practice_Location_Address, nh.Provider_Second_Line_Business_Practice_Location_Address, nh.Provider_Business_Practice_Location_Address_City_Name,
     nh.Provider_Business_Practice_Location_Address_State_Name, nh.Provider_Business_Practice_Location_Address_Postal_Code,
     nh.Provider_Business_Practice_Location_Address_Country_Cod, nh.Provider_Business_Practice_Location_Address_Fax_Number,
-    nh.Provider_Business_Practice_Location_Address_Telephone_Number from nppes_header nh;
+    nh.Provider_Business_Practice_Location_Address_Telephone_Number from tmp_NPPES_header nh;
 
 /* Remove blank contacts */
-delete from nppes_contact where first_line is null and second_line is null and city is null and postal_code is null
+delete from tmp_nppes_contact where first_line is null and second_line is null and city is null and postal_code is null
   and country_code is null and phone is null and fax is null;
 
 /* Populate a flattened address field which will be used for hashing */
-update nppes_contact set address_flattened =
+update tmp_nppes_contact set address_flattened =
   concat(case when first_line is not null then concat('|',first_line,'|') else '||' end,
          case when second_line is not null then concat('|', second_line,'|') else '||' end,
          case when city is not null then concat('|', city,'|') else '||' end,
          case when postal_code is not null then concat('|', postal_code,'|') else '||' end,
          case when country_code is not null then concat('|', country_code, '|') else '||' end);
 
-update nppes_contact set address_hash = password(address_flattened);
+update tmp_nppes_contact set address_hash = password(address_flattened);
 
 /* Temp table for addresses */
-drop table if exists temp_max_id_address;
+drop table if exists tmp_max_id_address;
+create table tmp_max_id_address (max_id integer, counter integer, address_hash varchar(1023));
 
-create table temp_max_id_address (max_id integer, counter integer, address_hash varchar(1023));
-
-
-
-insert into temp_max_id_address (max_id, counter, address_hash)
-  select max(id),count(*),address_hash from nppes_contact group by address_hash order by count(*) desc;
+insert into tmp_max_id_address (max_id, counter, address_hash)
+  select max(id),count(*),address_hash from tmp_nppes_contact group by address_hash order by count(*) desc;
 
 /* Holds the normalized addresses */
-drop table if exists address;
-create table address
+drop table if exists tmp_address;
+create table tmp_address
   (id integer primary key auto_increment,
     first_line varchar(55),
     second_line varchar(55),
@@ -1829,50 +1829,50 @@ create table address
     geocode_method varchar(64)
     );
 
-create index idx_nppes_contact_hash on nppes_contact(address_hash);
-create index idx_tmi_hash on temp_max_id_address(address_hash);
+create index idx_tmp_nppes_contact_hash on tmp_nppes_contact(address_hash);
+create index idx_tmi_hash on tmp_max_id_address(address_hash);
 
 /* Populate the address table */
-insert address (first_line, second_line, city, state, postal_code, country_code, address_flattened, address_formatted, address_hash)
+insert tmp_address (first_line, second_line, city, state, postal_code, country_code, address_flattened, address_formatted, address_hash)
   select nc.first_line, nc.second_line, nc.city, nc.state, nc.postal_code, nc.country_code,
-    nc.address_flattened, nc.address_formatted, nc.address_hash from nppes_contact nc
-   join temp_max_id_address tmi on tmi.address_hash = nc.address_hash and tmi.max_id = nc.id;
+    nc.address_flattened, nc.address_formatted, nc.address_hash from tmp_nppes_contact nc
+   join tmp_max_id_address tmi on tmi.address_hash = nc.address_hash and tmi.max_id = nc.id;
 
-create index idx_address_addr_hash on address(address_hash);
+create index idx_address_addr_hash on tmp_address(address_hash);
 
 /*
 This appears to be a bottleneck as the table is rewritten
 
-alter table nppes_contact drop column first_line;
-alter table nppes_contact drop column second_line;
-alter table nppes_contact drop column city;
-alter table nppes_contact drop column state;
-alter table nppes_contact drop column postal_code;
-alter table nppes_contact drop column address_formatted;
-alter table nppes_contact drop column address_flattened;
+alter table tmp_nppes_contact drop column first_line;
+alter table tmp_nppes_contact drop column second_line;
+alter table tmp_nppes_contact drop column city;
+alter table tmp_nppes_contact drop column state;
+alter table tmp_nppes_contact drop column postal_code;
+alter table tmp_nppes_contact drop column address_formatted;
+alter table tmp_nppes_contact drop column address_flattened;
 */
 
-update address set zip5 = left(postal_code, 5), zip4 = substring(postal_code, 6, 4);
+update tmp_address set zip5 = left(postal_code, 5), zip4 = substring(postal_code, 6, 4);
 
 /* Add indices to the tables */
 
-create unique index pk_npi_hct_proc on healthcare_provider_taxonomy_processed(npi);
-create index idx_oth_prov_id_npi on other_provider_identifiers(npi);
-create index idx_provider_licenses on provider_licenses(npi);
+create unique index pk_npi_hct_proc on tmp_healthcare_provider_taxonomy_processed(npi);
+create index idx_oth_prov_id_npi on tmp_other_provider_identifiers(npi);
+create index idx_tmp_provider_licenses on tmp_provider_licenses(npi);
 
-create index idx_addr_zip4 on address(zip4);
-create index idx_addr_zip5 on address(zip5);
-create index idx_addr_city on address(city);
-create index idx_addr_state on address(state);
-create index idx_addr_latitude on address(latitude);
-create index idx_addr_longitude on address(longitude);
-create index idx_addr_geocdm on address(geocode_method);
-create unique index idx_npi_npi_header on nppes_header(npi);
-create index idx_nppes_contact_npi on nppes_contact(npi);
-create index idx_nppes_contact_address_type on nppes_contact(address_type);
+create index idx_addr_zip4 on tmp_address(zip4);
+create index idx_addr_zip5 on tmp_address(zip5);
+create index idx_addr_city on tmp_address(city);
+create index idx_addr_state on tmp_address(state);
+create index idx_addr_latitude on tmp_address(latitude);
+create index idx_addr_longitude on tmp_address(longitude);
+create index idx_addr_geocdm on tmp_address(geocode_method);
+create unique index idx_npi_npi_header on tmp_NPPES_header(npi);
+create index idx_tmp_nppes_contact_npi on tmp_nppes_contact(npi);
+create index idx_tmp_nppes_contact_address_type on tmp_nppes_contact(address_type);
 
-drop table if exists npi_summary_detailed1;
-create table npi_summary_detailed1 as
+drop table if exists tmp_npi_summary_detailed1;
+create table tmp_npi_summary_detailed1 as
       select nh1.npi as npi,nh1.Provider_Business_Practice_Location_Address_State_Name as state,
         nh1.Provider_Business_Practice_Location_Address_Postal_Code as zip, nh1.Provider_Business_Practice_Location_Address_City_Name as city,
         nh1.Is_Sole_Proprietor as sole_provider,nh1.Provider_Gender_Code as gender_code,
@@ -1882,12 +1882,12 @@ create table npi_summary_detailed1 as
             else concat(rtrim(nh1.Provider_Last_Name_Legal_Name),', ',rtrim(nh1.Provider_First_Name),' ',
               if(nh1.provider_credential_text is null,'',replace(nh1.Provider_Credential_Text,'.','')))
         end as provider_name
-       from nppes_header nh1;
+       from tmp_NPPES_header nh1;
 
-create unique index idx_nsd1_npi on npi_summary_detailed1(npi);
+create unique index idx_nsd1_npi on tmp_npi_summary_detailed1(npi);
 
-drop table if exists npi_summary_detailed;
-create table npi_summary_detailed as
+drop table if exists tmp_npi_summary_detailed;
+create table tmp_npi_summary_detailed as
   select nsd1.*,
     a.address_flattened,
     a.zip5,
@@ -1897,15 +1897,15 @@ create table npi_summary_detailed as
     a.geocode_method,
     a.address_hash,
     left(nc.phone, 3) as practice_area_code
-    from npi_summary_detailed1 nsd1
-    join nppes_contact nc on nsd1.npi = nc.npi
-    join address a on a.address_hash = nc.address_hash
+    from tmp_npi_summary_detailed1 nsd1
+    join tmp_nppes_contact nc on nsd1.npi = nc.npi
+    join tmp_address a on a.address_hash = nc.address_hash
        and nc.address_type = 'practice';
 
-create unique index idx_nsd2_npi on npi_summary_detailed(npi);
+create unique index idx_nsd2_npi on tmp_npi_summary_detailed(npi);
 
-drop table if exists npi_summary_detailed_taxonomy1;
-create table npi_summary_detailed_taxonomy1 as
+drop table if exists tmp_npi_summary_detailed_taxonomy1;
+create table tmp_npi_summary_detailed_taxonomy1 as
    select hptp.npi as npi1,
      concat(pt1.provider_type,
       if(pt1.classification = '','',concat(' - ', pt1.classification)),
@@ -1950,29 +1950,29 @@ create table npi_summary_detailed_taxonomy1 as
       hptp.is_radiological_physics, hptp.is_rheumatology, hptp.is_sleep_medicine, hptp.is_sports_medicine, hptp.is_surgery_of_the_hand,
       hptp.is_surgical_critical_care, hptp.is_surgical_oncology, hptp.is_therapeutic_radiology, hptp.is_transplant_hepatology,
       hptp.is_trauma_surgery, hptp.is_vascular_and_interventional_radiology, hptp.is_vascular_surgery
-      from provider_licenses pl join healthcare_provider_taxonomy_processed hptp on hptp.npi = pl.npi
+      from tmp_provider_licenses pl join tmp_healthcare_provider_taxonomy_processed hptp on hptp.npi = pl.npi
     left outer join healthcare_provider_taxonomies pt1 on pt1.taxonomy_code = pl.Healthcare_Provider_Taxonomy_Code;
 
-create index idx_nsd2_npi on npi_summary_detailed_taxonomy1(npi1);
+create index idx_nsd2_npi on tmp_npi_summary_detailed_taxonomy1(npi1);
 
-drop table if exists npi_summary_detailed_taxonomy;
-create table npi_summary_detailed_taxonomy as
-  select nsd.*, nsdt1.* from npi_summary_detailed nsd
-    join npi_summary_detailed_taxonomy1 nsdt1 on nsd.npi =
+drop table if exists tmp_npi_summary_detailed_taxonomy;
+create table tmp_npi_summary_detailed_taxonomy as
+  select nsd.*, nsdt1.* from tmp_npi_summary_detailed nsd
+    join tmp_npi_summary_detailed_taxonomy1 nsdt1 on nsd.npi =
     nsdt1.npi1;
 
-alter table npi_summary_detailed_taxonomy drop npi1;
-create index idx_nsdt_npi on npi_summary_detailed_taxonomy(npi);
-create index idx_sequence_id_summary on npi_summary_detailed_taxonomy(sequence_id);
+alter table tmp_npi_summary_detailed_taxonomy drop npi1;
+create index idx_nsdt_npi on tmp_npi_summary_detailed_taxonomy(npi);
+create index idx_sequence_id_summary on tmp_npi_summary_detailed_taxonomy(sequence_id);
 
-drop table if exists npi_summary_detailed_primary_taxonomy;
-create table npi_summary_detailed_primary_taxonomy as
+drop table if exists tmp_npi_summary_detailed_primary_taxonomy;
+create table tmp_npi_summary_detailed_primary_taxonomy as
     select * from
-  npi_summary_detailed_taxonomy where sequence_id = 1
+  tmp_npi_summary_detailed_taxonomy where sequence_id = 1
   order by state, zip5, npi
   ;
 
-create unique index pk_nsdpt_npi on npi_summary_detailed_primary_taxonomy(npi);
+create unique index pk_nsdpt_npi on tmp_npi_summary_detailed_primary_taxonomy(npi);
 
 /*
 
@@ -1982,17 +1982,52 @@ select count(*) from npi_summary_detailed_primary_taxonomy;
 
 to
 
-select count(*) from NPPES_flat;
+select count(*) from tmp_NPPES_flat;
 
  */
 
+
+/* Run this if you already have the tables */
+
+insert into address select * from tmp_address; 
+insert into healthcare_provider_taxonomy_processed select * from tmp_healthcare_provider_taxonomy_processed; 
+insert into npi_summary_detailed select * from tmp_npi_summary_detailed; 
+insert into npi_summary_detailed1 select * from tmp_npi_summary_detailed1; 
+insert into npi_summary_detailed_primary_taxonomy select * from tmp_npi_summary_detailed_primary_taxonomy; 
+insert into npi_summary_detailed_taxonomy select * from tmp_npi_summary_detailed_taxonomy; 
+insert into npi_summary_detailed_taxonomy1 select * from tmp_npi_summary_detailed_taxonomy1; 
+insert into nppes_contact select * from tmp_nppes_contact; 
+insert into nppes_flat select * from tmp_nppes_flat;
+insert into nppes_header select * from tmp_nppes_header;
+insert into other_provider_identifiers select * from tmp_other_provider_identifiers; 
+insert into provider_licenses select * from tmp_provider_licenses;
+
+
+/* Run this with an empty database */
+
+create table address as select * from tmp_address; 
+create table healthcare_provider_taxonomy_processed as select * from tmp_healthcare_provider_taxonomy_processed; 
+create table npi_summary_detailed as select * from tmp_npi_summary_detailed; 
+create table npi_summary_detailed1 as select * from tmp_npi_summary_detailed1; 
+create table npi_summary_detailed_primary_taxonomy as select * from tmp_npi_summary_detailed_primary_taxonomy; 
+create table npi_summary_detailed_taxonomy as select * from tmp_npi_summary_detailed_taxonomy; 
+create table npi_summary_detailed_taxonomy1 as select * from tmp_npi_summary_detailed_taxonomy1; 
+create table nppes_contact as select * from tmp_nppes_contact; 
+create table nppes_flat as select * from tmp_nppes_flat;
+create table nppes_header as select * from tmp_nppes_header;
+create table other_provider_identifiers as select * from tmp_other_provider_identifiers; 
+create table provider_licenses select * from tmp_provider_licenses;
+
+
 /*
 
-NPI Summary Taxonomy Indicators
+
 
 */
-drop view if exists npi_summary_abridged_primary_taxonomy;
-CREATE VIEW npi_summary_abridged_primary_taxonomy
+
+
+drop view if exists NPI_Summary_Taxonomy_Indicators;
+CREATE VIEW NPI_Summary_Taxonomy_Indicators
 AS
    SELECT npi,
           state,

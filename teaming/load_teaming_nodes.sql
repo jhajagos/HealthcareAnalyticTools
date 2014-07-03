@@ -26,8 +26,8 @@ use teaming;
 
 /* Create the flat table to import the CSV file into */
 
- drop table if exists Load_tmp_NPPES_flat;
-    create table Load_tmp_NPPES_flat (
+ drop table if exists load_nppes_flat;
+    create table load_nppes_flat (
         NPI CHAR(10),
     Entity_Type_Code CHAR(1),
     Replacement_NPI CHAR(10),
@@ -364,7 +364,7 @@ create table healthcare_provider_taxonomies (
 */
 
 /* If loading from a local file sytem should be LOAD DATA LOCAL INFILE */
-LOAD DATA INFILE '/tmp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provider_taxonomies
+LOAD DATA LOCAL_INFILE '/tmp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provider_taxonomies
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\r\n'
       IGNORE 1 LINES
@@ -375,17 +375,17 @@ LOAD DATA INFILE '/tmp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provider_tax
  Load a local NPPES CSV file into the flat table. This will load the entire national file into a
  loading table. We also need to handle the conversion of empty strings into NULL valuesLes Morgan
 1:48 PM
-LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\NPPES_Data_Dissemination_June_2014\\npidata_20050523-20140608.csv' INTO TABLE Load_tmp_NPPES_flat
+LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\NPPES_Data_Dissemination_June_2014\\npidata_20050523-20140608.csv' INTO TABLE load_nppes_flat
 
  The path needs to be configured by the user. As an example on a Windows system for user Les and the June 2014 NPPES would like:
 
-LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\NPPES_Data_Dissemination_June_2014\\npidata_20050523-20140608.csv' INTO TABLE Load_tmp_NPPES_flat
+LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\NPPES_Data_Dissemination_June_2014\\npidata_20050523-20140608.csv' INTO TABLE load_nppes_flat
 
  */
 
 /* If loading from a local file sytem should be LOAD DATA LOCAL INFILE */
 
-LOAD DATA INFILE '/tmp/npidata_20050523-20140608.csv' INTO TABLE Load_tmp_NPPES_flat
+LOAD DATA LOCAL_INFILE '/tmp/npidata_20050523-20140608.csv' INTO TABLE load_nppes_flat
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\n'
       IGNORE 1 LINES
@@ -706,7 +706,7 @@ Authorized_Official_Name_Prefix_Text = case @Authorized_Official_Name_Prefix_Tex
 Authorized_Official_Name_Suffix_Text = case @Authorized_Official_Name_Suffix_Text when '' then NULL else @Authorized_Official_Name_Suffix_Text end,
 Authorized_Official_Credential_Text = case @Authorized_Official_Credential_Text when '' then NULL else @Authorized_Official_Credential_Text end;
 
-/*select * from load_tmp_NPPES_flat limit 1000; */
+/*select * from load_nppes_flat limit 1000; */
 
 
 
@@ -719,20 +719,20 @@ Configure the query below which creates the tmp_NPPES_flat table to create a res
 
 drop table if exists tmp_NPPES_flat;
 create table tmp_NPPES_flat as
-  select * from Load_tmp_NPPES_flat;
+  select * from load_nppes_flat;
 
 Or if you wanted to select providers from multiple states:
 
 drop table if exists tmp_NPPES_flat;
 create table tmp_NPPES_flat as
-  select * from Load_tmp_NPPES_flat where Provider_Business_Practice_Location_Address_State_Name in ('NY', 'CT', 'MA', 'RI', 'NH', 'ME', 'VT');
+  select * from load_nppes_flat where Provider_Business_Practice_Location_Address_State_Name in ('NY', 'CT', 'MA', 'RI', 'NH', 'ME', 'VT');
 
 
  */
 
 drop table if exists tmp_NPPES_flat;
 create table tmp_NPPES_flat as
-  select * from Load_tmp_NPPES_flat where Provider_Business_Practice_Location_Address_State_Name = 'MA';
+  select * from load_nppes_flat where Provider_Business_Practice_Location_Address_State_Name = 'MA';
 
 /*
 Run this query:

@@ -1804,7 +1804,7 @@ update tmp_nppes_contact set address_hash = password(address_flattened);
 
 /* Temp table for addresses */
 drop table if exists tmp_max_id_address;
-create table tmp_max_id_address (max_id integer, counter integer, address_hash varchar(1023));
+create table tmp_max_id_address (max_id integer, counter integer, address_hash varchar(64));
 
 insert into tmp_max_id_address (max_id, counter, address_hash)
   select max(id),count(*),address_hash from tmp_nppes_contact group by address_hash order by count(*) desc;
@@ -1830,6 +1830,7 @@ create table tmp_address
     );
 
 create index idx_tmp_nppes_contact_hash on tmp_nppes_contact(address_hash);
+alter table 
 create index idx_tmi_hash on tmp_max_id_address(address_hash);
 
 /* Populate the address table */
@@ -2023,7 +2024,9 @@ create table provider_licenses select * from tmp_provider_licenses;
 
 
 drop view if exists NPI_Summary_Taxonomy_Indicators;
-CREATE VIEW NPI_Summary_Taxonomy_Indicators
+CREATE VIEW ""
+  \
+
 AS
    SELECT npi,
           state,

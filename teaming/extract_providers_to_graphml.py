@@ -116,7 +116,7 @@ def add_edges_to_graph(cursor, graph, name="shares patients"):
 def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_NAME, npi_detail_table_name=NPI_DETAIL_TABLE_NAME,
          field_name_to_relationship=FIELD_NAME_TO_RELATIONSHIP, field_name_from_relationship=FIELD_NAME_FROM_RELATIONSHIP,
          file_name_prefix="",add_leaf_to_leaf_edges=False, node_label_name="provider_name",
-         field_name_weight=FIELD_NAME_WEIGHT, add_leaf_nodes=True, graph_type="directed", csv_output=True):
+         field_name_weight=FIELD_NAME_WEIGHT, add_leaf_nodes=True, graph_type="directed", csv_output=True, directory="./"):
     """Main script for extracting the provider graph from the MySQL database."""
 
     cursor = get_new_cursor() #Get an active connection to the database
@@ -239,10 +239,10 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
 
 
     logger("Writing GraphML file")
-    nx.write_graphml(ProviderGraph, file_name_prefix + "_provider_graph.graphml")
+    nx.write_graphml(ProviderGraph, os.path.join(directory, file_name_prefix + "_provider_graph.graphml"))
 
     if csv_output:
-        csv_edge_file_name = file_name_prefix + "_edge_list_with_weights.csv"
+        csv_edge_file_name = os.path.join(directory, file_name_prefix + "_edge_list_with_weights.csv")
 
         logger("Writing CSV of edges with weights")
         with open(csv_edge_file_name,"wb") as f:
@@ -254,7 +254,7 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
                     edge_data = ProviderGraph[node1][node2]
                     csv_edges.writerow((npi_from, npi_to, edge_data["weight"]))
 
-        csv_node_file_name = file_name_prefix + "_node_db.csv"
+        csv_node_file_name = os.path.join(directory, file_name_prefix + "_node_db.csv")
         logger("Writing CSV of nodes with attributes")
 
         with open(csv_node_file_name, "wb") as fw:

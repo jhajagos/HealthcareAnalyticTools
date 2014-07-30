@@ -1,9 +1,8 @@
 {
-    "REFERRAL_TABLE_NAME":"teaming.teaming_graph_providers_2012_2013",
-    "NPI_DETAIL_TABLE_NAME": "teaming.npi_summary_abridged_primary_taxonomy",
+    "REFERRAL_TABLE_NAME": "teaming.teaming_graph_providers_2012_2013",
+    "NPI_DETAIL_TABLE_NAME": "teaming.npi_summary_taxonomy_indicators_with_weights",
     "FIELD_NAME_FROM_RELATIONSHIP": "npi_from",
     "FIELD_NAME_TO_RELATIONSHIP": "npi_to",
     "FIELD_NAME_WEIGHT": "patient_total",
-    "_comment": "Save a copy of config.json.old.example to config.json.old. Here you can configure how the script runs and which
-tables are linked to."
+    "_comment": "Save a copy of config.json.example to config.json.old. Here you can configure how the script runs and which tables are linked to."
 }

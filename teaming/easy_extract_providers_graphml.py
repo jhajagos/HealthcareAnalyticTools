@@ -114,7 +114,7 @@ if __name__ == "__main__":
     for sql_clause in selection_fields_sql:
         where_criteria += selection_fields_sql[sql_clause] + " and "
 
-    where_criteria = where_criteria[:-5]
+    where_criteria = "(" + where_criteria[:-5] + ")"
     print(where_criteria)
 
 

@@ -2024,8 +2024,7 @@ create table provider_licenses select * from tmp_provider_licenses;
 
 
 drop view if exists NPI_Summary_Taxonomy_Indicators;
-CREATE VIEW ""
-  \
+CREATE VIEW NPI_Summary_Taxonomy_Indicators
 
 AS
    SELECT npi,

@@ -70,3 +70,70 @@ create table condensed_npi_part_b_billing_2012 as
   select npi, count(*) as distinct_hcpcs_code_count, min(bene_unique_cnt) as min_medicare_count, max(bene_unique_cnt) as max_medicare_member_count, 
     sum(bene_unique_cnt) as sum_non_unique_medicare_member_count, sum(average_Medicare_payment_amt * line_srvc_cnt) as total_payment_amount
     from npi_part_b_billing_2012 group by npi;
+    
+  
+create index idx_cnpbb12_npi on condensed_npi_part_b_billing_2012(npi);  
+
+drop table if exists tmp_npi_summary_detailed_primary_taxonomy_with_weights; 
+create table tmp_npi_summary_detailed_primary_taxonomy_with_weights as
+  select nsdpt.*, cnpbb.distinct_hcpcs_code_count, cnpbb.min_medicare_count, cnpbb.max_medicare_member_count, cnpbb.sum_non_unique_medicare_member_count, cnpbb.total_payment_amount from npi_summary_detailed_primary_taxonomy nsdpt
+    left outer join condensed_npi_part_b_billing_2012 cnpbb on cnpbb.npi = nsdpt.npi;
+    
+    
+insert into npi_summary_detailed_primary_taxonomy_with_weights
+  select * FROM tmp_npi_summary_detailed_primary_taxonomy_with_weights;
+
+create table npi_summary_detailed_primary_taxonomy_with_weights as 
+  select * from tmp_npi_summary_detailed_primary_taxonomy_with_weights;
+  
+create index idx_nsdptww_npi on npi_summary_detailed_primary_taxonomy_with_weights(npi);  
+
+drop view if exists NPI_Summary_Taxonomy_Indicators_With_Weights;
+CREATE VIEW NPI_Summary_Taxonomy_Indicators_With_Weights
+AS
+   SELECT npi,
+          state,
+          zip,
+          city,
+          sole_provider,
+          gender_code,
+          credential,
+          provider_name,
+          taxonomy_code,
+          taxonomy_name,
+          classification,
+          specialization,
+          address_flattened,
+          zip5,
+          zip4,
+          latitude,
+          longitude,
+          geocode_method,
+          taxonomy_depth,
+          flattened_taxonomy_string,
+          is_dentist,
+          is_emergency_medicine,
+          is_internal_medicine,
+          is_nurse_practitioner,
+          is_physician_assistant,
+          is_registered_nurse,
+          is_pathology,
+          is_hospital,
+          is_behavioral_health_and_social_service_providers,
+          is_laboratory,
+          is_student,
+          is_physician,
+          is_diagnostic_radiology,
+          is_ambulance,
+          is_chiropractor,
+          is_dermatology,
+          is_family_medicine,
+          is_general_acute_care_hospital,
+          is_hospitalist,
+          is_radiology,
+          is_podiatrist,
+          is_psychiatry,
+          is_nuclear_radiology,
+          is_hematology_and_oncology, distinct_hcpcs_code_count, min_medicare_count, max_medicare_member_count, total_payment_amount
+     FROM npi_summary_detailed_primary_taxonomy_with_weights nsdptww;
+     

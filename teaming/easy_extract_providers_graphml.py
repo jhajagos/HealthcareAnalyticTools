@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
     parser.add_option("-d", "--directory", default="./", dest="write_directory", help="The directory which to write ouput files to")
 
-    parser.add_option("-p", "--prefix", dest="file_name_prefix", help="The name to prefix on")
+    parser.add_option("-p", "--prefix", dest="file_name_prefix", help="File prefix name", default="")
 
     (options, args) = parser.parse_args()
 
@@ -77,7 +77,11 @@ if __name__ == "__main__":
 
     if options.taxonomy_selection_fields:
         taxonomy_selection_field_list = string_list_to_python_list(options.taxonomy_selection_fields)
-        taxonomy_selection_field_list_sql = field_selection_with_like("flattened_taxonomy_string", taxonomy_selection_field_list, padding_left_side=True, wild_card_right_side=True, padder="|")
+        taxonomy_selection_field_list_sql = field_selection_with_like("flattened_taxonomy_string",
+                                                                      taxonomy_selection_field_list,
+                                                                      padding_left_side=True,
+                                                                      wild_card_right_side=True,
+                                                                      wild_card_left_side=True, padder="|")
         selection_fields_sql["taxonomy_field_selection_list"] = taxonomy_selection_field_list_sql
 
     if options.zip_codes:

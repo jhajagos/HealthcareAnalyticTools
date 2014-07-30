@@ -59,7 +59,9 @@ if __name__ == "__main__":
     parser.add_option("-z", "--zip_codes", dest="zip_codes", default=None,
                       help="A comma separated list of zip codes. You can add the full five digits '11721,11794' or '117,119' to select multiple zip codes")
 
-    #parser.add_option("-l", "--include_leaf_nodes", dest="include_leaf_nodes", default=False, help="Whether to include leaf nodes or not: '-l True")
+    parser.add_option("-l", "--include_leaf_nodes_only", dest="include_leaf_nodes", default=True, help="Whether to include leaf nodes or not: '-l", action="store_false")
+
+    parser.add_option("-e", "--include_leaf_edges", dest="include_leaf_edges", default=False, help="Whether to include leaf to leaf edges. Warning this can make your graph very big", action="store_true")
 
     parser.add_option("-n", "--npis", dest="npis", default=None, help="A comma separated list of NPIs to include")
 
@@ -70,6 +72,10 @@ if __name__ == "__main__":
     parser.add_option("-d", "--directory", default="./", dest="write_directory", help="The directory which to write ouput files to")
 
     parser.add_option("-p", "--prefix", dest="file_name_prefix", help="File prefix name", default="")
+
+    parser.add_option("-s", "--sole_provider", dest="sole_provider", help="Selects providers that are a single individual", action="store_true", default=False)
+
+    parser.add_option("-i", "--non_sole_provider", dest="non_sole_provider", help="Selects providers that are not a single individual", action="store_true", default=False)
 
     (options, args) = parser.parse_args()
 
@@ -98,6 +104,12 @@ if __name__ == "__main__":
         npi_list = [int(n) for n in string_list_to_python_list(options.npis)]
         selection_fields_sql["npi_selection_list"] = "npi in " + str(tuple(npi_list))
 
+    if options.sole_provider:
+        selection_fields_sql["sole_provider"] = "sole_provider = 'Y'"
+
+    if options.non_sole_provider:
+        selection_fields_sql["non_soles_provider"] = "sole_provider = 'N'"
+
     where_criteria = ""
     for sql_clause in selection_fields_sql:
         where_criteria += selection_fields_sql[sql_clause] + " and "
@@ -108,5 +120,5 @@ if __name__ == "__main__":
 
     extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_NAME, npi_detail_table_name=NPI_DETAIL_TABLE_NAME,
          field_name_to_relationship=FIELD_NAME_TO_RELATIONSHIP, field_name_from_relationship=FIELD_NAME_FROM_RELATIONSHIP,
-         file_name_prefix=options.file_name_prefix, add_leaf_to_leaf_edges=False, node_label_name="provider_name",
-         field_name_weight=FIELD_NAME_WEIGHT, add_leaf_nodes=True, directory=options.write_directory)
+         file_name_prefix=options.file_name_prefix, add_leaf_to_leaf_edges=options.include_leaf_edges, node_label_name="provider_name",
+         field_name_weight=FIELD_NAME_WEIGHT, add_leaf_nodes=options.include_leaf_nodes, directory=options.write_directory)

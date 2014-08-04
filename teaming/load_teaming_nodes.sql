@@ -363,7 +363,7 @@ create table healthcare_provider_taxonomies (
 
 */
 
-/* If loading from a local file sytem should be LOAD DATA LOCAL INFILE */
+/* If loading from a local file sytem should be LOAD DATA LOCAL INFILE if loading data remotely should be just LOAD DATA LOCAL INFILE */
 LOAD DATA LOCAL_INFILE '/tmp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provider_taxonomies
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\r\n'
@@ -1986,20 +1986,6 @@ to
 select count(*) from tmp_NPPES_flat;
 
  */
-
-
-/* Run this if you already have the tables */
-
-insert into address select * from tmp_address; 
-insert into healthcare_provider_taxonomy_processed select * from tmp_healthcare_provider_taxonomy_processed; 
-insert into npi_summary_detailed select * from tmp_npi_summary_detailed; 
-insert into npi_summary_detailed_primary_taxonomy select * from tmp_npi_summary_detailed_primary_taxonomy; 
-insert into npi_summary_detailed_taxonomy select * from tmp_npi_summary_detailed_taxonomy; 
-insert into nppes_contact select * from tmp_nppes_contact; 
-insert into nppes_flat select * from tmp_nppes_flat;
-insert into nppes_header select * from tmp_nppes_header;
-insert into other_provider_identifiers select * from tmp_other_provider_identifiers; 
-insert into provider_licenses select * from tmp_provider_licenses;
 
 
 /* Run this with an empty database */

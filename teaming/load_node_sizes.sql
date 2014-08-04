@@ -1,3 +1,5 @@
+use teaming;
+
 drop table if exists `npi_part_b_billing_2012`;
 
 CREATE TABLE `npi_part_b_billing_2012` (
@@ -30,8 +32,13 @@ CREATE TABLE `npi_part_b_billing_2012` (
   `stdev_Medicare_payment_amt` float DEFAULT NULL
 ) engine = innodb;
 
+/*
 
-LOAD DATA  INFILE '/tmp/Medicare-Physician-and-Other-Supplier-PUF-CY2012.txt' INTO TABLE `npi_part_b_billing_2012`
+LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\Medicare-Physician-and-Other-Supplier-PUF-CY2012\\Medicare-Physician-and-Other-Supplier-PUF-CY2012.txt' INTO TABLE load_nppes_flat'
+
+*/
+
+LOAD DATA LOCAL INFILE '/tmp/Medicare-Physician-and-Other-Supplier-PUF-CY2012.txt' INTO TABLE `npi_part_b_billing_2012`
       FIELDS TERMINATED BY '\t' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\n' IGNORE 2 LINES
        (@npi, @nppes_provider_last_org_name, @nppes_provider_first_name, @nppes_provider_mi, @nppes_credentials, @nppes_provider_gender, @nppes_entity_code, @nppes_provider_street1, @nppes_provider_street2, @nppes_provider_city, @nppes_provider_zip, @nppes_provider_state, @nppes_provider_country, @provider_type, @medicare_participation_indicator, @place_of_service, @hcpcs_code, @hcpcs_description, @line_srvc_cnt, @bene_unique_cnt, @bene_day_srvc_cnt, @average_Medicare_allowed_amt, @stdev_Medicare_allowed_amt, @average_submitted_chrg_amt, @stdev_submitted_chrg_amt, @average_Medicare_payment_amt, @stdev_Medicare_payment_amt)
@@ -79,9 +86,12 @@ create table tmp_npi_summary_detailed_primary_taxonomy_with_weights as
   select nsdpt.*, cnpbb.distinct_hcpcs_code_count, cnpbb.min_medicare_count, cnpbb.max_medicare_member_count, cnpbb.sum_non_unique_medicare_member_count, cnpbb.total_payment_amount from npi_summary_detailed_primary_taxonomy nsdpt
     left outer join condensed_npi_part_b_billing_2012 cnpbb on cnpbb.npi = nsdpt.npi;
     
-    
+/*
+Run this:
+
 insert into npi_summary_detailed_primary_taxonomy_with_weights
   select * FROM tmp_npi_summary_detailed_primary_taxonomy_with_weights;
+*/
 
 create table npi_summary_detailed_primary_taxonomy_with_weights as 
   select * from tmp_npi_summary_detailed_primary_taxonomy_with_weights;

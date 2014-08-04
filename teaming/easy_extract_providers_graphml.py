@@ -77,6 +77,8 @@ if __name__ == "__main__":
 
     parser.add_option("-i", "--non_sole_provider", dest="non_sole_provider", help="Selects providers that are not a single individual", action="store_true", default=False)
 
+    parser.add_option("-x", "--blank_sole_provider", dest="blank_sole_provider", help="Select a provider individual", action="store_true", default=False)
+
     (options, args) = parser.parse_args()
 
     selection_fields_sql = {}
@@ -108,7 +110,10 @@ if __name__ == "__main__":
         selection_fields_sql["sole_provider"] = "sole_provider = 'Y'"
 
     if options.non_sole_provider:
-        selection_fields_sql["non_soles_provider"] = "sole_provider = 'N'"
+        selection_fields_sql["non_sole_provider"] = "sole_provider = 'N'"
+
+    if options.blank_sole_provider:
+        selection_fields_sql["blank_sole_provider"] = "sole_provider is NULL"
 
     where_criteria = ""
     for sql_clause in selection_fields_sql:

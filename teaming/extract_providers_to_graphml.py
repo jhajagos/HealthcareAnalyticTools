@@ -239,10 +239,10 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
 
 
     logger("Writing GraphML file")
-    nx.write_graphml(ProviderGraph, os.path.join(directory, file_name_prefix + "_provider_graph.graphml"))
+    nx.write_graphml(ProviderGraph, os.path.join(directory, file_name_prefix + ".graphml"))
 
     if csv_output:
-        csv_edge_file_name = os.path.join(directory, file_name_prefix + "_edge_list_with_weights.csv")
+        csv_edge_file_name = os.path.join(directory, file_name_prefix + "_edges.csv")
 
         logger("Writing CSV of edges with weights")
         with open(csv_edge_file_name,"wb") as f:

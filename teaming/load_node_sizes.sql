@@ -93,6 +93,8 @@ insert into npi_summary_detailed_primary_taxonomy_with_weights
   select * FROM tmp_npi_summary_detailed_primary_taxonomy_with_weights;
 */
 
+drop table if exists  npi_summary_detailed_primary_taxonomy_with_weights;
+
 create table npi_summary_detailed_primary_taxonomy_with_weights as 
   select * from tmp_npi_summary_detailed_primary_taxonomy_with_weights;
   

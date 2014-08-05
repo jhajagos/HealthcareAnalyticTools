@@ -75,9 +75,9 @@ if __name__ == "__main__":
 
     parser.add_option("-s", "--sole_provider", dest="sole_provider", help="Selects providers that are a single individual", action="store_true", default=False)
 
-    parser.add_option("-i", "--non_sole_provider", dest="non_sole_provider", help="Selects providers that are not a single individual", action="store_true", default=False)
+    parser.add_option("-g", "--group_provider", dest="non_sole_provider", help="Selects providers that are not a single individual", action="store_true", default=False)
 
-    parser.add_option("-x", "--blank_sole_provider", dest="blank_sole_provider", help="Select a provider individual", action="store_true", default=False)
+    parser.add_option("-i", "--institutional_provider", dest="blank_sole_provider", help="Select an institutional provider", action="store_true", default=False)
 
     (options, args) = parser.parse_args()
 

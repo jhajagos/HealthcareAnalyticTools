@@ -57,9 +57,8 @@ create table tmp_NPPES_flat as
 
  */
 
-/* The following code will add one state to an existing database. Adding multiple states increases runtime.
+/* The following code will add two states to an existing database. Adding multiple states increases runtime.
 To add only one state use alternate SQL code shown below:
-
 
 drop table if exists tmp_NPPES_flat;
 create table tmp_NPPES_flat as
@@ -70,16 +69,6 @@ create table tmp_NPPES_flat as
 drop table if exists tmp_NPPES_flat;
 create table tmp_NPPES_flat as
   select * from load_nppes_flat where Provider_Business_Practice_Location_Address_State_Name in ('WV', 'RI');
-
-
-/*
-Run this query:
-
-select count(*) from tmp_NPPES_flat;
-
-Keep record count to compare to the final table creation step
-
-*/
 
 /* Holds identifiers for providers, for example, a state Medicaid identifier. */
 drop table if exists tmp_other_provider_identifiers;

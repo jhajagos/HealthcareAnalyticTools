@@ -1,7 +1,7 @@
 __author__ = 'janos'
 
 from optparse import OptionParser
-from easy_extract_providers_graphml import field_selection_with_like
+from teaming_extract import field_selection_with_like
 
 if __name__ == "__main__":
     parser = OptionParser()

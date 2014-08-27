@@ -271,7 +271,7 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
                     csv_nodes.writerow(header)
 
                 row_to_write = [node]
-                for attribute in header:
+                for attribute in header[1:]:
                     if attribute in node_dict:
                         value_to_write = node_dict[attribute]
                     else:

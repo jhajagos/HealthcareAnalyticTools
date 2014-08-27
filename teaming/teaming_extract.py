@@ -65,13 +65,13 @@ if __name__ == "__main__":
 
     parser.add_option("-n", "--npis", dest="npis", default=None, help="A comma separated list of NPIs to include")
 
-    parser.add_option("-b", "--binary_selection_fields", default=None, dest="binary_selection_fields", help="A list of fields that 'is_dentist,is_hospital'")
+    parser.add_option("-b", "--binary_selection_fields", default=None, dest="binary_selection_fields", help="A list of binary indicator fields that 'is_dentist,is_hospital'")
 
     parser.add_option("-t", "--taxonomy_selection_fields", default=None, dest="taxonomy_selection_fields", help="A list of taxonomy codes that you want to include in the selection criteria")
 
     parser.add_option("-d", "--directory", default="./", dest="write_directory", help="The directory which to write ouput files to")
 
-    parser.add_option("-p", "--prefix", dest="file_name_prefix", help="File prefix name", default="")
+    parser.add_option("-f", "--file_name", dest="file_name_prefix", help="File prefix name", default="")
 
     parser.add_option("-s", "--sole_provider", dest="sole_provider", help="Selects providers that are a single individual", action="store_true", default=False)
 

@@ -1168,18 +1168,6 @@ insert tmp_address (first_line, second_line, city, state, postal_code, country_c
 
 create index idx_address_addr_hash on tmp_address(address_hash);
 
-/*
-This appears to be a bottleneck as the table is rewritten
-
-alter table tmp_nppes_contact drop column first_line;
-alter table tmp_nppes_contact drop column second_line;
-alter table tmp_nppes_contact drop column city;
-alter table tmp_nppes_contact drop column state;
-alter table tmp_nppes_contact drop column postal_code;
-alter table tmp_nppes_contact drop column address_formatted;
-alter table tmp_nppes_contact drop column address_flattened;
-*/
-
 update tmp_address set zip5 = left(postal_code, 5), zip4 = substring(postal_code, 6, 4);
 
 /* Add indices to the tables */

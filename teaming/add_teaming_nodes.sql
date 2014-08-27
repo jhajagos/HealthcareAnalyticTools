@@ -16,7 +16,8 @@
  select distinct state from npi_summary_primary_detailed_taxonomy;
  select count(*) as record_counter, state from npi_summary_detailed_primary_taxonomy group by state order by state;
 
- Author: Janos G. Hajagos 7/9/14
+Author: Janos G. Hajagos
+Version Number 20140827
 
  Code is part of https://github.com/jhajagos/HealthcareAnalyticTools
 
@@ -56,15 +57,20 @@ create table tmp_NPPES_flat as
 
  */
 
-/* The following code will add one state to an existing database. Adding one state at a time minimizes run time. To add more than one state at once, use the alternate SQL code shown below the first query.*/
+/* The following code will add one state to an existing database. Adding multiple states increases runtime.
+To add only one state use alternate SQL code shown below:
+
+
 drop table if exists tmp_NPPES_flat;
 create table tmp_NPPES_flat as
-  select * from load_nppes_flat where Provider_Business_Practice_Location_Address_State_Name in ('WV','CT','RI');
+  select * from load_nppes_flat where Provider_Business_Practice_Location_Address_State_Name in ('WV');
 
-/*
-To run multiple states use SQL of the following format:
-Provider_Business_Practice_Location_Address_State_Name in ('NY','OH');
 */
+
+drop table if exists tmp_NPPES_flat;
+create table tmp_NPPES_flat as
+  select * from load_nppes_flat where Provider_Business_Practice_Location_Address_State_Name in ('WV', 'RI');
+
 
 /*
 Run this query:
@@ -1307,20 +1313,7 @@ create table tmp_npi_summary_detailed_primary_taxonomy as
 
 create unique index pk_nsdpt_npi on tmp_npi_summary_detailed_primary_taxonomy(npi);
 
-/*
-
-Compare record count of this:
-
-select count(*) from npi_summary_detailed_primary_taxonomy;
-
-to
-
-select count(*) from tmp_NPPES_flat;
-
- */
-
-
-/* Run this if you already have the tables */
+/* This script assumes that you have an exisitng database to insert records into */
 
 insert into address select * from tmp_address;
 insert into healthcare_provider_taxonomy_processed select * from tmp_healthcare_provider_taxonomy_processed;
@@ -1332,80 +1325,6 @@ insert into nppes_flat select * from tmp_nppes_flat;
 insert into nppes_header select * from tmp_nppes_header;
 insert into other_provider_identifiers select * from tmp_other_provider_identifiers;
 insert into provider_licenses select * from tmp_provider_licenses;
-
-
-/* Run this only with an empty database */
-
-/*
-create table address as select * from tmp_address;
-create table healthcare_provider_taxonomy_processed as select * from tmp_healthcare_provider_taxonomy_processed;
-create table npi_summary_detailed as select * from tmp_npi_summary_detailed;
-create table npi_summary_detailed_primary_taxonomy as select * from tmp_npi_summary_detailed_primary_taxonomy;
-create table npi_summary_detailed_taxonomy as select * from tmp_npi_summary_detailed_taxonomy;
-create table nppes_contact as select * from tmp_nppes_contact;
-create table nppes_flat as select * from tmp_nppes_flat;
-create table nppes_header as select * from tmp_nppes_header;
-create table other_provider_identifiers as select * from tmp_other_provider_identifiers;
-create table provider_licenses select * from tmp_provider_licenses;
-*/
-
-/*
-
-
-
-*/
-
-/* We can skip the CREATE VIEW */
-/*
-drop view if exists NPI_Summary_Taxonomy_Indicators;
-CREATE VIEW NPI_Summary_Taxonomy_Indicators
-AS
-   SELECT npi,
-          state,
-          zip,
-          city,
-          sole_provider,
-          gender_code,
-          credential,
-          provider_name,
-          taxonomy_code,
-          taxonomy_name,
-          classification,
-          specialization,
-          address_flattened,
-          zip5,
-          zip4,
-          latitude,
-          longitude,
-          geocode_method,
-          taxonomy_depth,
-          flattened_taxonomy_string,
-          is_dentist,
-          is_emergency_medicine,
-          is_internal_medicine,
-          is_nurse_practitioner,
-          is_physician_assistant,
-          is_registered_nurse,
-          is_pathology,
-          is_hospital,
-          is_behavioral_health_and_social_service_providers,
-          is_laboratory,
-          is_student,
-          is_physician,
-          is_diagnostic_radiology,
-          is_ambulance,
-          is_chiropractor,
-          is_dermatology,
-          is_family_medicine,
-          is_general_acute_care_hospital,
-          is_hospitalist,
-          is_radiology,
-          is_podiatrist,
-          is_psychiatry,
-          is_nuclear_radiology,
-          is_hematology_and_oncology
-     FROM npi_summary_detailed_primary_taxonomy nsdpt;
-*/
 
 /* After the new nodes have been added, refresh the tables that contain cost and patient volume data. An alternative is to run the following commands after adding a new state just to refresh data for the new state. If you do not want the cost data you do not need to run these statements, but you would need to reconfigure the extract scripts, because the extract scripts assume a default configuration in which cost data is present. */
 drop table if exists tmp_npi_summary_detailed_primary_taxonomy_with_weights;

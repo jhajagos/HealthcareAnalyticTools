@@ -126,4 +126,4 @@ if __name__ == "__main__":
     extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_NAME, npi_detail_table_name=NPI_DETAIL_TABLE_NAME,
          field_name_to_relationship=FIELD_NAME_TO_RELATIONSHIP, field_name_from_relationship=FIELD_NAME_FROM_RELATIONSHIP,
          file_name_prefix=options.file_name_prefix, add_leaf_to_leaf_edges=options.include_leaf_edges, node_label_name="provider_name",
-         field_name_weight=FIELD_NAME_WEIGHT, add_leaf_nodes=options.include_leaf_nodes, directory=options.write_directory)
+         field_name_weight=FIELD_NAME_WEIGHT, add_leaf_nodes=options.include_leaf_edges, directory=options.write_directory)

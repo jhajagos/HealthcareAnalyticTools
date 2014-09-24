@@ -17,6 +17,8 @@ import sys
 import csv
 import json
 import os
+from manipulate_provider_graphml import export_nodes_to_csv
+from manipulate_provider_graphml import export_edges_to_csv
 
 def load_configuration(file_name="config.json.example"):
     with open(file_name, "r") as f:
@@ -245,42 +247,12 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
         csv_edge_file_name = os.path.join(directory, file_name_prefix + "_edges.csv")
 
         logger("Writing CSV of edges with weights")
-        with open(csv_edge_file_name,"wb") as f:
-            csv_edges = csv.writer(f)
-            for node1 in ProviderGraph.edge:
-                for node2 in ProviderGraph.edge[node1]:
-                    npi_from = node1
-                    npi_to = node2
-                    edge_data = ProviderGraph[node1][node2]
-                    csv_edges.writerow((npi_from, npi_to, edge_data["weight"]))
+        export_edges_to_csv(csv_edge_file_name, ProviderGraph)
 
         csv_node_file_name = os.path.join(directory, file_name_prefix + "_node_db.csv")
         logger("Writing CSV of nodes with attributes")
 
-        with open(csv_node_file_name, "wb") as fw:
-            i = 0
-            csv_nodes = csv.writer(fw)
-            for node in ProviderGraph.node:
-
-                node_dict = ProviderGraph.node[node]
-                if i == 0:
-                    header = node_dict.keys()
-                    header.sort()
-                    header = ["node_id"] + header
-
-                    csv_nodes.writerow(header)
-
-                row_to_write = [node]
-                for attribute in header[1:]:
-                    if attribute in node_dict:
-                        value_to_write = node_dict[attribute]
-                    else:
-                        value_to_write = ''
-
-                    row_to_write += [value_to_write]
-                csv_nodes.writerow(row_to_write)
-
-                i += 1
+        export_nodes_to_csv(csv_node_file_name, ProviderGraph)
 
 
 if __name__ == "__main__":

@@ -59,7 +59,7 @@ if __name__ == "__main__":
     parser.add_option("-z", "--zip_codes", dest="zip_codes", default=None,
                       help="A comma separated list of zip codes. You can add the full five digits '11721,11794' or '117,119' to select multiple zip codes")
 
-    parser.add_option("-l", "--include_leaf_nodes_only", dest="include_leaf_nodes", default=True, help="Whether to include leaf nodes or not: '-l", action="store_false")
+    parser.add_option("-c", "--restrict_to_core_nodes_only", dest="include_core_nodes", default=False, help="Whether to include core nodes", action="store_true")
 
     parser.add_option("-e", "--include_leaf_edges", dest="include_leaf_edges", default=False, help="Whether to include leaf to leaf edges. Warning this can make your graph very big", action="store_true")
 

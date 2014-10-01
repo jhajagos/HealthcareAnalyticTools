@@ -26,9 +26,6 @@ def export_nodes_to_csv(csv_node_file_name, provider_graph):
             node_dict = provider_graph.node[node]
             if i == 0:
                 header = node_dict.keys()
-                # if "node_id" in header: #Correct if header has a node_id
-                #     node_id_position = header.index("node_id")
-                #     header = header[0:node_id_position] + header[node_id_position+1:]
 
                 header.sort()
                 header = ["node_id"] + header
@@ -46,11 +43,10 @@ def export_nodes_to_csv(csv_node_file_name, provider_graph):
             csv_nodes.writerow(row_to_write)
 
             i += 1
-        return i
+    return i
 
 
 def filter_graphml_by_flattened_provider_taxonomies(provider_graph, list_of_taxonomies, field_name="flattened_taxonomy_string", keep_node_that_matches=True, leaf_nodes_only=True):
-
     regex_string = "("
     i = 0
     for taxonomy in list_of_taxonomies:
@@ -69,7 +65,7 @@ def filter_graphml_by_flattened_provider_taxonomies(provider_graph, list_of_taxo
             match_result = re_taxonomy_string.match(flattened_taxonomy_string)
             if match_result:
                 if keep_node_that_matches:
-                    pass
+                    pass # We don't do any thing if
                 else:
                     if leaf_nodes_only:
                         if node["node_type"] == "leaf":
@@ -85,6 +81,20 @@ def filter_graphml_by_flattened_provider_taxonomies(provider_graph, list_of_taxo
                         provider_graph.remove_node(node_id)
                 else:
                     pass
+        else:
+            if keep_node_that_matches:
+                if leaf_nodes_only:
+                    if "node_type" in node:
+                        if node["node_type"] == "leaf":
+                            provider_graph.remove_node(node_id)
+                        else:
+                            pass
+                    else:
+                        provider_graph.remove_node(node_id)
+                else:
+                    provider_graph.remove_node(node_id)
+
+
 
     return provider_graph
 
@@ -109,7 +119,11 @@ if __name__ == "__main__":
         taxonomy_list = taxonomy_list_string.split(',')
 
         print("Reading GraphML file")
+
         provider_graph = nx.read_graphml(graphml_file_name)
+        #provider_graph_original = nx.read_graphml(graphml_file_name)
+        #provider_graph = provider_graph_original.copy()
+
 
         number_of_nodes = len(provider_graph.nodes())
         base_name = graphml_file_name[: -1 * len(".graphml")]
@@ -123,10 +137,12 @@ if __name__ == "__main__":
         removed_nodes = number_of_nodes - number_of_nodes_left
         print("Number of nodes in the filtered graph is %s (removed %s nodes)." % (number_of_nodes_left, removed_nodes))
 
-        print("Exporting filtered graph")
-        nx.write_graphml(filtered_graph, filtered_graphml_file_name)
 
         print("Exporting graphml to CSV")
         export_graph_to_csv(base_name_filtered, filtered_graph)
+
+        print("Exporting filtered graph")
+        nx.write_graphml(filtered_graph, filtered_graphml_file_name)
+
 
 

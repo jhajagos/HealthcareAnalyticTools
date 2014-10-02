@@ -112,7 +112,7 @@ def export_graph_to_csv(base_name, provider_graph):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3:
+    if len(sys.argv) >= 3:
         graphml_file_name = sys.argv[1]
         taxonomy_list_string = sys.argv[2]
 
@@ -121,9 +121,6 @@ if __name__ == "__main__":
         print("Reading GraphML file")
 
         provider_graph = nx.read_graphml(graphml_file_name)
-        #provider_graph_original = nx.read_graphml(graphml_file_name)
-        #provider_graph = provider_graph_original.copy()
-
 
         number_of_nodes = len(provider_graph.nodes())
         base_name = graphml_file_name[: -1 * len(".graphml")]
@@ -131,7 +128,14 @@ if __name__ == "__main__":
         filtered_graphml_file_name = base_name_filtered + ".graphml"
 
         print("Filtering graph by taxonomy")
-        filtered_graph = filter_graphml_by_flattened_provider_taxonomies(provider_graph, taxonomy_list)
+
+        if len(sys.argv) == 4:
+            leaf_nodes_only = int(sys.argv[3])
+        else:
+            leaf_nodes_only = 1
+
+
+        filtered_graph = filter_graphml_by_flattened_provider_taxonomies(provider_graph, taxonomy_list, leaf_nodes_only=leaf_nodes_only)
         number_of_nodes_left = len(filtered_graph.nodes())
 
         removed_nodes = number_of_nodes - number_of_nodes_left

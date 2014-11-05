@@ -136,14 +136,18 @@ if __name__ == "__main__":
 
     parser = OptionParser()
 
-    parser.add_option("-g", "--graphml_file", dest="graphml_file_name", help="")
-    parser.add_option("-t", "--taxonomy_fields", dest="taxonomy_selection_fields", help="")
-    parser.add_option("-x", "--filter", dest="filter_graph", action="store_true", help="")
-    parser.add_option("-a", "--add_an_indicator_field", dest="indicator_field_name", help="")
-    parser.add_option("-e", "--restrict_to_leaf_nodes", dest="restrict_to_leaf_nodes", help="", action="store_false", default=True)
-    parser.add_option("-c", "--include_entire_graph", dest="restrict_to_leaf_nodes", help="", action="store_true")
-    parser.add_option("-d", "--directory", dest="directory", help="", default=None)
-    parser.add_option("-f", "--base_file_name", dest="base_file_name", help="", default=None)
+    parser.add_option("-g", "--graphml_file", dest="graphml_file_name", help="(REQUIRED) Specifies the name of the GraphML file to use as input.")
+    parser.add_option("-t", "--taxonomy_fields", dest="taxonomy_selection_fields",
+                      help="(REQUIRED) A list of NUCC taxonomy codes to use for selection purposes.")
+    parser.add_option("-x", "--extract", dest="filter_graph", action="store_true",
+                      help="(OPTIONAL) Only output nodes that match the taxonomy selection fields. If the -x parameter is not supplied, the default behavior is to output all nodes.")
+    parser.add_option("-a", "--add_an_indicator_field", dest="indicator_field_name",
+                      help="(OPTIONAL) Add a new binary indicator field to the output file. Records matching the taxonomy selection fields will have a value of 1 on that new binary field. If the -a parameter is not supplied, no new binary indicator field will be added.")
+    parser.add_option("-l", "--filter_leaves_only", dest="restrict_to_leaf_nodes", help="(OPTIONAL) Apply the selection criteria to leaf nodes only and include all core nodes. If the -l parameter is not supplied, the default behavior is to filter both leaf and core nodes", action="store_false",
+                      default=True)
+    parser.add_option("-d", "--directory", dest="directory", default=None,
+                      help="The directory where the output file will be placed. If the -d parameter is not supplied it will be set to the current directory. Examples (Windows): -d C:\\cms_teaming\\graphs\\ and (Unix) -d /cms_teaming/graphs/")
+    parser.add_option("-f", "--file_name_prefix", dest="base_file_name", help="", default=None)
     parser.add_option("-j", "--json_file_name", dest="json_file_name", help="", default=None)
 
     (options, args) = parser.parse_args()
@@ -179,6 +183,16 @@ if __name__ == "__main__":
 
     manipulated_graphml_file_name = base_name_manipulated + ".graphml"
 
+    if options.indicator_field_name:
+        print("Adding indicator field based on taxonomy to the graph")
+
+        if options.indicator_field_name:
+            indicator_field_name = options.indicator_field_name
+        else:
+            indicator_field_name = "taxonomy_field"
+
+        manipulated_graph = add_indicator_taxonomy_field_to_graph(provider_graph, taxonomy_list, indicator_field_name)
+
     if options.filter_graph:
 
         number_of_nodes = len(provider_graph.nodes())
@@ -191,15 +205,7 @@ if __name__ == "__main__":
         removed_nodes = number_of_nodes - number_of_nodes_left
         print("Number of nodes in the filtered graph is %s (removed %s nodes)." % (number_of_nodes_left, removed_nodes))
 
-    if options.indicator_field_name:
-        print("Adding indicator field based on taxonomy to the graph")
 
-        if options.indicator_field_name:
-            indicator_field_name = options.indicator_field_name
-        else:
-            indicator_field_name = "taxonomy_field"
-
-        manipulated_graph = add_indicator_taxonomy_field_to_graph(provider_graph, taxonomy_list, indicator_field_name)
 
     print("Exporting graphml to CSV")
     export_graph_to_csv(base_name_manipulated, manipulated_graph)

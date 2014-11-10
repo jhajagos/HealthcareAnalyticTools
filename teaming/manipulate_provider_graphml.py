@@ -140,15 +140,15 @@ if __name__ == "__main__":
     parser.add_option("-t", "--taxonomy_fields", dest="taxonomy_selection_fields",
                       help="(REQUIRED) A list of NUCC taxonomy codes to use for selection purposes.")
     parser.add_option("-x", "--extract", dest="filter_graph", action="store_true",
-                      help="(OPTIONAL) Only output nodes that match the taxonomy selection fields. If the -x parameter is not supplied, the default behavior is to output all nodes.")
-    parser.add_option("-a", "--add_an_indicator_field", dest="indicator_field_name",
-                      help="(OPTIONAL) Add a new binary indicator field to the output file. Records matching the taxonomy selection fields will have a value of 1 on that new binary field. If the -a parameter is not supplied, no new binary indicator field will be added.")
-    parser.add_option("-l", "--filter_leaves_only", dest="restrict_to_leaf_nodes", help="(OPTIONAL) Apply the selection criteria to leaf nodes only and include all core nodes. If the -l parameter is not supplied, the default behavior is to filter both leaf and core nodes", action="store_false",
+                      help="(OPTIONAL) Only output nodes that match the taxonomy selection fields. If the -x parameter is not supplied, the default behavior is to output all nodes. If the -t parameter is set, a new binary indicator field will be added to the output file. The value of the binary indicator will be set to 1 if any of the taxonomy codes are present in the node. The name of the binary indicator will be by default 'binary_indicator_taxonomy_field'. The name can be optionally specified using the -a parameter.")
+    parser.add_option("-n", "--name", dest="indicator_field_name",
+                      help="(OPTIONAL) Specify a name for the new binary indicator field that will be created using the -x parameter. If no -n parameter is provided, a default name will be supplied by the -x parameter.") #Records matching the taxonomy selection fields will have a value of 1 on that new binary field. If the -a parameter is not supplied, no new binary indicator field will be added.
+    parser.add_option("-l", "--filter_leaves_only", dest="restrict_to_leaf_nodes", help="(OPTIONAL) Apply the selection criteria to leaf nodes only and include all core nodes. If the -l parameter is not supplied, the default behavior is to filter both leaf and core nodes.", action="store_false",
                       default=True)
-    parser.add_option("-r", "--remove_nodes", dest="remove_nodes", default=False, action="store_true", help="(OPTIONAL) Removes nodes that match the taxonomy selection criteria.")
+    parser.add_option("-r", "--remove_nodes", dest="remove_nodes", default=False, action="store_true", help="(OPTIONAL) Removes nodes that match the taxonomy selection criteria. If the -r parameter is not specified, then nodes that match the taxonomy selection criteria are retained.")
     parser.add_option("-d", "--directory", dest="directory", default=None,
-                      help="The directory where the output file will be placed. If the -d parameter is not supplied it will be set to the current directory. Examples (Windows): -d C:\\cms_teaming\\graphs\\ and (Unix) -d /cms_teaming/graphs/")
-    parser.add_option("-f", "--file_name_prefix", dest="base_file_name", default=None, help="(OPTIONAL) File name with the specified prefix, for example, 'RI_pcp' would create the following files 'RI_pcp_node_db.csv', 'RI_pcp_edges.csv', 'RI_pcp.graphml'")
+                      help="The directory where the output file will be placed. If the -d parameter is not supplied it will be set to the current directory. Examples (Windows): [-d C:\\cms_teaming\\graphs\\] and (Unix) [-d /cms_teaming/graphs/]")
+    parser.add_option("-f", "--file_name_prefix", dest="base_file_name", default=None, help="(OPTIONAL) Prefix for the output file names. For example, -d 'RI_pcp' would create the following file names: 'RI_pcp_node_db.csv', 'RI_pcp_edges.csv', 'RI_pcp.graphml'. If the -f parameter is not specified, then the names of the three output files will be prefixed by the name of the input file with '_modified' appended.")
     #parser.add_option("-j", "--json_file_name", dest="json_file_name", help="(Not Implemented). Read taxonomy mappings from a JSON configuration file ", default=None)
 
 
@@ -191,7 +191,7 @@ if __name__ == "__main__":
         if options.indicator_field_name:
             indicator_field_name = options.indicator_field_name
         else:
-            indicator_field_name = "taxonomy_field"
+            indicator_field_name = "binary_indicator_taxonomy_field"
 
         manipulated_graph = add_indicator_taxonomy_field_to_graph(provider_graph, taxonomy_list, indicator_field_name)
 

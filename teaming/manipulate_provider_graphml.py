@@ -64,7 +64,7 @@ def regex_taxonomy(list_of_taxonomies):
     return re_taxonomy_string
 
 
-def filter_graphml_by_flattened_provider_taxonomies(provider_graph_to_manipulate, list_of_taxonomies, field_name="flattened_taxonomy_string", keep_node_that_matches=True, leaf_nodes_only=True):
+def filter_graphml_by_flattened_provider_taxonomies(provider_graph_to_manipulate, list_of_taxonomies, field_name="flattened_taxonomy_string", keep_nodes_that_match=True, leaf_nodes_only=True):
     """List of taxonomies"""
     re_taxonomy_string = regex_taxonomy(list_of_taxonomies)
     for node_id in provider_graph_to_manipulate.nodes():
@@ -73,7 +73,7 @@ def filter_graphml_by_flattened_provider_taxonomies(provider_graph_to_manipulate
             flattened_taxonomy_string = node[field_name]
             match_result = re_taxonomy_string.match(flattened_taxonomy_string)
             if match_result:
-                if keep_node_that_matches:
+                if keep_nodes_that_match:
                     pass # We don't do any thing if
                 else:
                     if leaf_nodes_only:
@@ -82,7 +82,7 @@ def filter_graphml_by_flattened_provider_taxonomies(provider_graph_to_manipulate
                     else:
                         provider_graph_to_manipulate.remove_node(node_id)
             else:
-                if keep_node_that_matches:
+                if keep_nodes_that_match:
                     if leaf_nodes_only:
                         if node["node_type"] == "leaf":
                             provider_graph_to_manipulate.remove_node(node_id)
@@ -91,7 +91,7 @@ def filter_graphml_by_flattened_provider_taxonomies(provider_graph_to_manipulate
                 else:
                     pass
         else:
-            if keep_node_that_matches:
+            if keep_nodes_that_match:
                 if leaf_nodes_only:
                     if "node_type" in node:
                         if node["node_type"] == "leaf":
@@ -122,8 +122,8 @@ def add_indicator_taxonomy_field_to_graph(provider_graph_to_manipulate, list_of_
 
 def export_graph_to_csv(base_file_name, export_provider_graph):
 
-    csv_node_file_name = base_file_name + ".nodes_db.csv"
-    csv_edge_file_name = base_file_name + ".edges.csv"
+    csv_node_file_name = base_file_name + "_nodes_db.csv"
+    csv_edge_file_name = base_file_name + "_edges.csv"
 
     print("Writing CSV with nodes")
     export_nodes_to_csv(csv_node_file_name, export_provider_graph)
@@ -133,8 +133,8 @@ def export_graph_to_csv(base_file_name, export_provider_graph):
 
 
 if __name__ == "__main__":
-
-    parser = OptionParser()
+    usage = "usage: %prog [options] arg1 arg2"
+    parser = OptionParser(usage=usage)
 
     parser.add_option("-g", "--graphml_file", dest="graphml_file_name", help="(REQUIRED) Specifies the name of the GraphML file to use as input.")
     parser.add_option("-t", "--taxonomy_fields", dest="taxonomy_selection_fields",
@@ -145,10 +145,12 @@ if __name__ == "__main__":
                       help="(OPTIONAL) Add a new binary indicator field to the output file. Records matching the taxonomy selection fields will have a value of 1 on that new binary field. If the -a parameter is not supplied, no new binary indicator field will be added.")
     parser.add_option("-l", "--filter_leaves_only", dest="restrict_to_leaf_nodes", help="(OPTIONAL) Apply the selection criteria to leaf nodes only and include all core nodes. If the -l parameter is not supplied, the default behavior is to filter both leaf and core nodes", action="store_false",
                       default=True)
+    parser.add_option("-r", "--remove_nodes", dest="remove_nodes", default=False, action="store_true", help="(OPTIONAL) Removes nodes that match the taxonomy selection criteria.")
     parser.add_option("-d", "--directory", dest="directory", default=None,
                       help="The directory where the output file will be placed. If the -d parameter is not supplied it will be set to the current directory. Examples (Windows): -d C:\\cms_teaming\\graphs\\ and (Unix) -d /cms_teaming/graphs/")
-    parser.add_option("-f", "--file_name_prefix", dest="base_file_name", help="", default=None)
-    parser.add_option("-j", "--json_file_name", dest="json_file_name", help="", default=None)
+    parser.add_option("-f", "--file_name_prefix", dest="base_file_name", default=None, help="(OPTIONAL) File name with the specified prefix, for example, 'RI_pcp' would create the following files 'RI_pcp_node_db.csv', 'RI_pcp_edges.csv', 'RI_pcp.graphml'")
+    #parser.add_option("-j", "--json_file_name", dest="json_file_name", help="(Not Implemented). Read taxonomy mappings from a JSON configuration file ", default=None)
+
 
     (options, args) = parser.parse_args()
 
@@ -166,7 +168,7 @@ if __name__ == "__main__":
     else:
         restrict_to_leaf_nodes = False
 
-    print("Reading GraphML file")
+    print("Reading GraphML file: '%s'" % graphml_file_name)
     provider_graph = nx.read_graphml(graphml_file_name)
 
     if options.directory is None:
@@ -177,7 +179,7 @@ if __name__ == "__main__":
     if options.base_file_name is None:
         graphml_file_name_only = os.path.split(graphml_file_name)[1]
         base_name = graphml_file_name_only[: -1 * len(".graphml")]
-        base_name_manipulated = base_name + ".manipulated"
+        base_name_manipulated = base_name + "_manipulated"
     else:
         base_name_manipulated = options.base_file_name
 
@@ -197,9 +199,10 @@ if __name__ == "__main__":
 
         number_of_nodes = len(provider_graph.nodes())
         print("Filtering graph by taxonomy")
-
+        keep_nodes_that_match = not options.remove_nodes
         manipulated_graph = filter_graphml_by_flattened_provider_taxonomies(provider_graph, taxonomy_list,
-                                                                            leaf_nodes_only=restrict_to_leaf_nodes)
+                                                                            leaf_nodes_only=restrict_to_leaf_nodes,
+                                                                            keep_nodes_that_match=keep_nodes_that_match)
         number_of_nodes_left = len(manipulated_graph.nodes())
 
         removed_nodes = number_of_nodes - number_of_nodes_left
@@ -207,10 +210,10 @@ if __name__ == "__main__":
 
 
 
-    print("Exporting graphml to CSV")
+    print("Exporting graphml to CSV node file '%s' and edge file '%s' to directory '%s'" % (base_name_manipulated + "_nodes_db.csv",base_name_manipulated + "_edges.csv", base_directory))
     export_graph_to_csv(base_name_manipulated, manipulated_graph)
 
-    print("Exporting filtered graph")
+    print("Exporting filtered graph to GraphML file '%s' to directory '%s'" % (manipulated_graphml_file_name, base_directory))
     nx.write_graphml(manipulated_graph, manipulated_graphml_file_name)
 
 

@@ -73,6 +73,8 @@ stdev_Medicare_payment_amt = case when @stdev_Medicare_payment_amt = '' then NUL
 
 create index idx_npbb12_npi on npi_part_b_billing_2012(npi);
 
+drop table if exists condensed_npi_part_b_billing_2012;
+
 create table condensed_npi_part_b_billing_2012 as 
   select npi, count(*) as distinct_hcpcs_code_count, min(bene_unique_cnt) as min_medicare_medicare_count, max(bene_unique_cnt) as max_medicare_member_count,
     sum(bene_unique_cnt) as sum_non_unique_medicare_member_count,
@@ -84,7 +86,8 @@ create index idx_cnpbb12_npi on condensed_npi_part_b_billing_2012(npi);
 
 drop table if exists tmp_npi_summary_detailed_primary_taxonomy_with_weights; 
 create table tmp_npi_summary_detailed_primary_taxonomy_with_weights as
-  select nsdpt.*, cnpbb.distinct_hcpcs_code_count, cnpbb.min_medicare_member_count, cnpbb.max_medicare_member_count, cnpbb.sum_non_unique_medicare_member_count,
+  select nsdpt.*, cnpbb.distinct_hcpcs_code_count, cnpbb.min_medicare_member_count, cnpbb.max_medicare_member_count,
+    cnpbb.sum_non_unique_medicare_member_count,
     cnpbb.total_payment_amount from npi_summary_detailed_primary_taxonomy nsdpt
     left outer join condensed_npi_part_b_billing_2012 cnpbb on cnpbb.npi = nsdpt.npi;
     

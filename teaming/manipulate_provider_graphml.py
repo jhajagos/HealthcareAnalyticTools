@@ -172,10 +172,6 @@ if __name__ == "__main__":
     provider_graph = nx.read_graphml(graphml_file_name)
     print("Number of nodes read is %s" % len(provider_graph.nodes()))
 
-    if options.directory is None:
-        base_directory = os.path.abspath("./")
-    else:
-        base_directory = options.directory
 
     if options.base_file_name is None:
         graphml_file_name_only = os.path.split(graphml_file_name)[1]
@@ -185,6 +181,16 @@ if __name__ == "__main__":
         base_name_manipulated = options.base_file_name
 
     manipulated_graphml_file_name = base_name_manipulated + ".graphml"
+    graphml_file_name = os.path.abspath(graphml_file_name)
+    original_directory, base_graphml_filename = os.path.split(graphml_file_name)
+    print(original_directory, base_graphml_filename)
+    if options.directory is None:
+        if len(original_directory) == 0:
+            base_directory = os.path.abspath("./")
+        else:
+            base_directory = original_directory
+    else:
+        base_directory = options.directory
 
     if True: #options.indicator_field_name:
         if options.indicator_field_name:
@@ -211,11 +217,11 @@ if __name__ == "__main__":
         removed_nodes = number_of_nodes - number_of_nodes_left
         print("Number of nodes in the filtered graph is %s (removed %s nodes)." % (number_of_nodes_left, removed_nodes))
 
-    print("Exporting graphml to CSV node file '%s' and edge file '%s' to directory '%s'" % (base_name_manipulated + "_nodes_db.csv",base_name_manipulated + "_edges.csv", base_directory))
-    export_graph_to_csv(base_name_manipulated, manipulated_graph)
+    print("Exporting graphml to CSV node file '%s' and edge file '%s' to directory '%s'" % (base_name_manipulated + "_nodes_db.csv", base_name_manipulated + "_edges.csv", base_directory))
+    export_graph_to_csv(os.path.join(base_directory, base_name_manipulated), manipulated_graph)
 
     print("Exporting filtered graph to GraphML file '%s' to directory '%s'" % (manipulated_graphml_file_name, base_directory))
-    nx.write_graphml(manipulated_graph, manipulated_graphml_file_name)
+    nx.write_graphml(manipulated_graph, os.path.join(base_directory, manipulated_graphml_file_name))
 
 
 

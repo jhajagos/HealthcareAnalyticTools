@@ -153,6 +153,6 @@ AS
           is_podiatrist,
           is_psychiatry,
           is_nuclear_radiology,
-          is_hematology_and_oncology, distinct_hcpcs_code_count, min_medicare_count, max_medicare_member_count, total_payment_amount
+          is_hematology_and_oncology, distinct_hcpcs_code_count, min_medicare_member_count, max_medicare_member_count, total_payment_amount
      FROM npi_summary_detailed_primary_taxonomy_with_weights nsdptww;
      

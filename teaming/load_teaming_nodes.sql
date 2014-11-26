@@ -364,7 +364,7 @@ create table healthcare_provider_taxonomies (
 */
 
 /* If loading from a local file sytem should be LOAD DATA LOCAL INFILE if loading data remotely should be just LOAD DATA LOCAL INFILE */
-LOAD DATA LOCAL_INFILE '/tmp/nucc_taxonomy_140.csv' INTO TABLE healthcare_provider_taxonomies
+LOAD DATA LOCAL INFILE 'C:\\Users\\janos\\CMS_teaming\\data\\nucc_taxonomy_140_ansi.csv' INTO TABLE healthcare_provider_taxonomies
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\r\n'
       IGNORE 1 LINES
@@ -385,7 +385,7 @@ LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\NPPES_Data_Disseminat
 
 /* If loading from a local file sytem should be LOAD DATA LOCAL INFILE */
 
-LOAD DATA LOCAL_INFILE '/tmp/npidata_20050523-20140608.csv' INTO TABLE load_nppes_flat
+LOAD DATA LOCAL INFILE 'C:\\Users\\janos\\cms_teaming\\data\\NPPES_Data_Dissemination_September_2014\\npidata_20050523-20140907.csv' INTO TABLE load_nppes_flat
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\n'
       IGNORE 1 LINES
@@ -1830,7 +1830,7 @@ create table tmp_address
     );
 
 create index idx_tmp_nppes_contact_hash on tmp_nppes_contact(address_hash);
-alter table 
+
 create index idx_tmi_hash on tmp_max_id_address(address_hash);
 
 /* Populate the address table */

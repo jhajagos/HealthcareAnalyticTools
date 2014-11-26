@@ -38,7 +38,7 @@ LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\Medicare-Physician-an
 
 */
 
-LOAD DATA LOCAL INFILE '/tmp/Medicare-Physician-and-Other-Supplier-PUF-CY2012.txt' INTO TABLE `npi_part_b_billing_2012`
+LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\cms_teaming\\data\\Medicare-Physician-and-Other-Supplier-PUF-CY2012.txt' INTO TABLE `npi_part_b_billing_2012`
       FIELDS TERMINATED BY '\t' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\n' IGNORE 2 LINES
        (@npi, @nppes_provider_last_org_name, @nppes_provider_first_name, @nppes_provider_mi, @nppes_credentials, @nppes_provider_gender, @nppes_entity_code, @nppes_provider_street1, @nppes_provider_street2, @nppes_provider_city, @nppes_provider_zip, @nppes_provider_state, @nppes_provider_country, @provider_type, @medicare_participation_indicator, @place_of_service, @hcpcs_code, @hcpcs_description, @line_srvc_cnt, @bene_unique_cnt, @bene_day_srvc_cnt, @average_Medicare_allowed_amt, @stdev_Medicare_allowed_amt, @average_submitted_chrg_amt, @stdev_submitted_chrg_amt, @average_Medicare_payment_amt, @stdev_Medicare_payment_amt)
@@ -76,10 +76,12 @@ create index idx_npbb12_npi on npi_part_b_billing_2012(npi);
 drop table if exists condensed_npi_part_b_billing_2012;
 
 create table condensed_npi_part_b_billing_2012 as 
-  select npi, count(*) as distinct_hcpcs_code_count, min(bene_unique_cnt) as min_medicare_medicare_count, max(bene_unique_cnt) as max_medicare_member_count,
-    sum(bene_unique_cnt) as sum_non_unique_medicare_member_count,
-    cast(sum(average_Medicare_payment_amt * line_srvc_cnt) as integer) as total_payment_amount
-    from npi_part_b_billing_2012 group by npi;
+  select npi, distinct_hcpcs_code_count,  min_medicare_member_count, max_medicare_member_count, 
+    sum_non_unique_medicare_member_count, cast(total_payment_amount_float as unsigned integer) as total_payment_amount from (
+    select npi, count(*) as distinct_hcpcs_code_count, min(bene_unique_cnt) as min_medicare_member_count, max(bene_unique_cnt) as max_medicare_member_count,
+      sum(bene_unique_cnt) as sum_non_unique_medicare_member_count,
+      sum(average_Medicare_payment_amt * line_srvc_cnt) as total_payment_amount_float
+      from npi_part_b_billing_2012 group by npi) t;
     
   
 create index idx_cnpbb12_npi on condensed_npi_part_b_billing_2012(npi);  

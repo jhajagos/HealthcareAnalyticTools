@@ -57,21 +57,21 @@ if __name__ == "__main__":
 
     parser = OptionParser()
     parser.add_option("-z", "--zip_codes", dest="zip_codes", default=None,
-                      help="A comma separated list of zip codes. You can add the full five digits '11721,11794' or '117,119' to select multiple zip codes")
+                      help="A comma separated list of zip codes. You can add the full five digits '11721,11794' or '117,119' to select multiple zip codes. Do not delimit the list with single quotes. Example: -z 11721,11794")
 
-    parser.add_option("-c", "--restrict_to_core_nodes_only", dest="include_core_nodes", default=False, help="Whether to include core nodes", action="store_true")
+    parser.add_option("-c", "--restrict_to_core_nodes_only", dest="include_core_nodes", default=False, help="Only include core nodes that meet the selection criteria. Leaf nodes that do not meet the primary selection criteria will not be extracted.", action="store_true")
 
-    parser.add_option("-e", "--include_leaf_edges", dest="include_leaf_edges", default=False, help="Whether to include leaf to leaf edges. Warning this can make your graph very big", action="store_true")
+    parser.add_option("-e", "--include_leaf_edges", dest="include_leaf_edges", default=False, help="By default edges connecting leaf nodes are not included. The -e parameter will include leaf to leaf edges. Warning: this can make your extracted graph very big.", action="store_true")
 
-    parser.add_option("-n", "--npis", dest="npis", default=None, help="A comma separated list of NPIs to include")
+    parser.add_option("-n", "--npis", dest="npis", default=None, help="A comma separated list of NPIs to include. Example: -n 1558399980,1972545028,1417021007")
 
-    parser.add_option("-b", "--binary_selection_fields", default=None, dest="binary_selection_fields", help="A list of binary indicator fields that 'is_dentist,is_hospital'")
+    parser.add_option("-b", "--binary_selection_fields", default=None, dest="binary_selection_fields", help="A list of binary indicator fields to use as selection criteria. Example: -b is_dentist,is_hospital")
 
-    parser.add_option("-t", "--taxonomy_selection_fields", default=None, dest="taxonomy_selection_fields", help="A list of taxonomy codes that you want to include in the selection criteria")
+    parser.add_option("-t", "--taxonomy_selection_fields", default=None, dest="taxonomy_selection_fields", help="A list of taxonomy codes to use as selection criteria. Example: -t 208D00000X,207Q00000X,207RG0300X,207R00000X")
 
-    parser.add_option("-d", "--directory", default="./", dest="write_directory", help="The directory which to write ouput files to")
+    parser.add_option("-d", "--directory", default="./", dest="write_directory", help="The directory to write output files to. Example (Windows): -d E:\\cms_teaming\\files\\  Example (Linux): -d /data/cms_teaming/")
 
-    parser.add_option("-f", "--file_name", dest="file_name_prefix", help="File prefix name", default="")
+    parser.add_option("-f", "--file_name_prefix", dest="base_file_name", default="", help="Prefix for the output file names. For example, -d 'RI_pcp' would create the following file names: 'RI_pcp_node_db.csv', 'RI_pcp_edges.csv', 'RI_pcp.graphml'.")
 
     parser.add_option("-s", "--sole_provider", dest="sole_provider", help="Selects providers that are a single individual", action="store_true", default=False)
 
@@ -125,5 +125,5 @@ if __name__ == "__main__":
     add_leaf_nodes = not options.include_core_nodes
     extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_NAME, npi_detail_table_name=NPI_DETAIL_TABLE_NAME,
          field_name_to_relationship=FIELD_NAME_TO_RELATIONSHIP, field_name_from_relationship=FIELD_NAME_FROM_RELATIONSHIP,
-         file_name_prefix=options.file_name_prefix, add_leaf_to_leaf_edges=options.include_leaf_edges, node_label_name="provider_name",
+         file_name_prefix=options.base_file_name, add_leaf_to_leaf_edges=options.include_leaf_edges, node_label_name="provider_name",
          field_name_weight=FIELD_NAME_WEIGHT, add_leaf_nodes=add_leaf_nodes, directory=options.write_directory)

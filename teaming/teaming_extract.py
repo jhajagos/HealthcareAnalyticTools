@@ -73,11 +73,11 @@ if __name__ == "__main__":
 
     parser.add_option("-f", "--file_name_prefix", dest="base_file_name", default="", help="Prefix for the output file names. For example, -d 'RI_pcp' would create the following file names: 'RI_pcp_node_db.csv', 'RI_pcp_edges.csv', 'RI_pcp.graphml'.")
 
-    parser.add_option("-s", "--sole_provider", dest="sole_provider", help="Selects providers that are a single individual", action="store_true", default=False)
+    parser.add_option("-s", "--sole_provider", dest="sole_provider", help="Extract providers that are a single individual.", action="store_true", default=False)
 
-    parser.add_option("-g", "--group_provider", dest="non_sole_provider", help="Selects providers that are not a single individual", action="store_true", default=False)
+    parser.add_option("-g", "--group_provider", dest="non_sole_provider", help="Extract providers that are group based.", action="store_true", default=False)
 
-    parser.add_option("-i", "--institutional_provider", dest="blank_sole_provider", help="Select an institutional provider", action="store_true", default=False)
+    parser.add_option("-i", "--institutional_provider", dest="blank_sole_provider", help="Extract providers that are institutional based.", action="store_true", default=False)
 
     (options, args) = parser.parse_args()
 

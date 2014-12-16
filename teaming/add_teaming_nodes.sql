@@ -68,7 +68,7 @@ create table tmp_NPPES_flat as
 
 drop table if exists tmp_NPPES_flat;
 create table tmp_NPPES_flat as
-  select * from load_nppes_flat where Provider_Business_Practice_Location_Address_State_Name in ('WV', 'RI');
+  select * from load_nppes_flat where Provider_Business_Practice_Location_Address_State_Name in ('NY');
 
 /* Holds identifiers for providers, for example, a state Medicaid identifier. */
 drop table if exists tmp_other_provider_identifiers;
@@ -1306,7 +1306,8 @@ insert into provider_licenses select * from tmp_provider_licenses;
 /* After the new nodes have been added, refresh the tables that contain cost and patient volume data. An alternative is to run the following commands after adding a new state just to refresh data for the new state. If you do not want the cost data you do not need to run these statements, but you would need to reconfigure the extract scripts, because the extract scripts assume a default configuration in which cost data is present. */
 drop table if exists tmp_npi_summary_detailed_primary_taxonomy_with_weights;
 create table tmp_npi_summary_detailed_primary_taxonomy_with_weights as
-  select nsdpt.*, cnpbb.distinct_hcpcs_code_count, cnpbb.min_medicare_count, cnpbb.max_medicare_member_count, cnpbb.sum_non_unique_medicare_member_count, cnpbb.total_payment_amount from npi_summary_detailed_primary_taxonomy nsdpt
+  select nsdpt.*, cnpbb.distinct_hcpcs_code_count, cnpbb.min_medicare_member_count, cnpbb.max_medicare_member_count, 
+  cnpbb.sum_non_unique_medicare_member_count, cnpbb.total_payment_amount from npi_summary_detailed_primary_taxonomy nsdpt
     left outer join condensed_npi_part_b_billing_2012 cnpbb on cnpbb.npi = nsdpt.npi;
 
 drop table if exists  npi_summary_detailed_primary_taxonomy_with_weights;

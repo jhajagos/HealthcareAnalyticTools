@@ -156,6 +156,8 @@ if __name__ == "__main__":
 
     if options.taxonomy_selection_fields:
         taxonomy_list = options.taxonomy_selection_fields.split(',')
+    else:
+        taxonomy_list = []
 
     if options.graphml_file_name:
         graphml_file_name = options.graphml_file_name

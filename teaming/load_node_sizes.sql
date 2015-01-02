@@ -78,7 +78,7 @@ drop table if exists condensed_npi_part_b_billing_2012;
 create table condensed_npi_part_b_billing_2012 as 
   select npi, distinct_hcpcs_code_count,  min_medicare_member_count, max_medicare_member_count, 
     sum_non_unique_medicare_member_count, cast(total_payment_amount_float as unsigned integer) as total_payment_amount from (
-    select npi, count(*) as distinct_hcpcs_code_count, min(bene_unique_cnt) as min_medicare_member_count, max(bene_unique_cnt) as max_medicare_member_count,
+    select npi, count(hcpcs_code) as distinct_hcpcs_code_count, min(bene_unique_cnt) as min_medicare_member_count, max(bene_unique_cnt) as max_medicare_member_count,
       sum(bene_unique_cnt) as sum_non_unique_medicare_member_count,
       sum(average_Medicare_payment_amt * line_srvc_cnt) as total_payment_amount_float
       from npi_part_b_billing_2012 group by npi) t;

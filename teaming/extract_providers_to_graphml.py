@@ -10,7 +10,13 @@ A database connection is made through a MySQL database that has a DSN called tea
 
 __author__ = 'Janos G. Hajagos'
 
-import pyodbc as odbc
+engine = "pyodbc"
+try:
+    import pyodbc as odbc
+except ImportError:
+    import sqlalchemy as sa
+    engine = "sqlalchemy"
+
 import networkx as nx
 import pprint
 import sys
@@ -31,8 +37,8 @@ Save a copy of config.json.old.old.example to config.json.old.old. Here you can 
 tables are linked to.
 """
 
-if os.path.exists("config.json.old.old"): # Checks for a configuration file
-    config = load_configuration("config.json.old.old")
+if os.path.exists("config.json"): # Checks for a configuration file
+    config = load_configuration("config.json")
 else: # if no configuration file exists it loads the default "config.json.old.old.example"
     config = load_configuration()
 
@@ -43,27 +49,49 @@ FIELD_NAME_FROM_RELATIONSHIP = config["FIELD_NAME_FROM_RELATIONSHIP"]
 FIELD_NAME_TO_RELATIONSHIP = config["FIELD_NAME_TO_RELATIONSHIP"]
 FIELD_NAME_WEIGHT = config["FIELD_NAME_WEIGHT"]
 
+if "CONNECTION_STRING" in config:
+    CONNECTION_STRING = config["CONNECTION_STRING"]
+else:
+    CONNECTION_STRING = "x"
 
 def logger(string_to_write=""):
     """Print to the standard input"""
     print(string_to_write)
 
-def get_new_cursor(dsn_name="teaming"):
+def get_new_cursor(connection_string="teaming", connection_type="pyodbc"):
     """Open the connection to the database and returns a cursor for executing queries"""
-    logger("Opening connection %s" % dsn_name)
-    connection = odbc.connect("DSN=%s" % dsn_name, autocommit=True)
-    return connection.cursor()
+
+    if connection_type == "pyodbc":
+        dsn_name = connection_string
+        logger("Opening connection %s" % dsn_name)
+        connection = odbc.connect("DSN=%s" % dsn_name, autocommit=True)
+        return connection.cursor()
+    elif connection_type == "sqlalchemy":
+        engine = sa.create_engine(connection_string)
+        connection = engine.connect()
+        return connection      
 
 
 def row_to_dictionary(row_obj, exclude_None = True):
     """Convert a row to a Python dictionary that is easier to work with"""
-    column_names = [desc[0] for desc in row_obj.cursor_description]
-    row_dict = {}
-    for i in range(len(column_names)):
+    if "cursor_description" in dir(row_obj):
+        column_names = [desc[0] for desc in row_obj.cursor_description]
+        row_dict = {}
+        for i in range(len(column_names)):
+            if exclude_None:
+                if row_obj[i] is not None:
+                    row_dict[column_names[i]] = row_obj[i]
+        return row_dict
+    else:
+	row_dict = dict(row_obj)
+        new_row_dict = {}
         if exclude_None:
-            if row_obj[i] is not None:
-                row_dict[column_names[i]] = row_obj[i]
-    return row_dict
+	    for key in row_dict:
+                if row_dict[key] is not None:
+                     new_row_dict[key] = row_dict[key]
+            return new_row_dict
+        else:
+            return dict(row_obj)
 
 
 def add_nodes_to_graph(cursor, graph, node_type, label_name = None):
@@ -121,7 +149,7 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
          field_name_weight=FIELD_NAME_WEIGHT, add_leaf_nodes=True, graph_type="directed", csv_output=True, directory="./"):
     """Main script for extracting the provider graph from the MySQL database."""
 
-    cursor = get_new_cursor() #Get an active connection to the database
+    cursor = get_new_cursor(CONNECTION_STRING, engine) #Get an active connection to the database
 
     #Show the configuration that the script is running with
     #To pipe the output to a file use the > operator to redirect output to a file:
@@ -153,7 +181,10 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
     query_first_part = """select distinct npi from %s rt1 join %s tnd1 on rt1.%s = tnd1.npi where %s""" % (referral_table_name,npi_detail_table_name,field_name_from_relationship, where_criteria)
     query_second_part = """select distinct npi from %s rt2 join %s tnd2 on rt2.%s = tnd2.npi where %s""" % (referral_table_name,npi_detail_table_name,field_name_to_relationship, where_criteria)
     core_node_query_to_execute = "insert into npi_to_export_to_graph (npi,node_type) select t.*,'C' from (\n%s\nunion\n%s)\nt;" % (query_first_part, query_second_part)
-
+    
+    if engine == "sqlalchemy":
+	if "%" in core_node_query_to_execute:
+            core_node_query_to_execute = "%%".join(core_node_query_to_execute.split("%"))
     logger(core_node_query_to_execute)
     cursor.execute(core_node_query_to_execute)
 
@@ -165,7 +196,7 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
 
     # Populate the nodes are directly selected criteria
     logger("Populating core nodes")
-    cursor.execute(npi_detail_query_to_execute)
+    cursor_result = cursor.execute(npi_detail_query_to_execute)
 
     # Select the default directed graph. Here we call the networkx Graph object
     if graph_type == "directed":
@@ -173,7 +204,7 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
     elif graph_type == "undirected": # Warning this is not tested currently
         ProviderGraph = nx.Graph()
 
-    ProviderGraph = add_nodes_to_graph(cursor, ProviderGraph, "core", label_name=node_label_name)
+    ProviderGraph = add_nodes_to_graph(cursor_result, ProviderGraph, "core", label_name=node_label_name)
 
     # If leaf nodes are select the script will import them into the database
     if add_leaf_nodes:
@@ -196,8 +227,8 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
         populate_leaf_nodes_query_to_execute = """select * from npi_to_export_to_graph neg join %s tnd
             on tnd.npi = neg.npi where neg.node_type = 'L'""" % npi_detail_table_name
         logger(populate_leaf_nodes_query_to_execute)
-        cursor.execute(populate_leaf_nodes_query_to_execute)
-        ProviderGraph = add_nodes_to_graph(cursor, ProviderGraph, "leaf", label_name=node_label_name)
+        cursor_result = cursor.execute(populate_leaf_nodes_query_to_execute)
+        ProviderGraph = add_nodes_to_graph(cursor_result, ProviderGraph, "leaf", label_name=node_label_name)
 
     # Add in the edges to the data
     logger("Populating edges")
@@ -218,8 +249,8 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
 
     # Add the leaf edges to the data
     logger(add_core_query_to_execute)
-    cursor.execute(add_core_query_to_execute)
-    ProviderGraph = add_edges_to_graph(cursor, ProviderGraph)
+    cursor_result = cursor.execute(add_core_query_to_execute)
+    ProviderGraph = add_edges_to_graph(cursor_result, ProviderGraph)
 
     if add_leaf_to_leaf_edges: #Danger is that there are too many leaves
         logger("Add leaf edges")
@@ -231,9 +262,9 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
       where negt3.node_type = 'L' and negf3.node_type = 'L'
       ;""" % (field_name_to_relationship, field_name_from_relationship, field_name_weight, referral_table_name,
               field_name_to_relationship, field_name_from_relationship)
-        cursor.execute(leaf_query_to_execute)
+        cursor_result = cursor.execute(leaf_query_to_execute)
         logger(leaf_query_to_execute)
-        add_edges_to_graph(cursor, ProviderGraph)
+        add_edges_to_graph(cursor_result, ProviderGraph)
     else:
         logger("Leaf-to-leaf edges were not selected for export")
 
@@ -275,4 +306,4 @@ python extract_providers_to_graphml.py "condition='1234567890'" file_name_prefix
             leaf_edges = False
 
         extract_provider_network(sys.argv[1], file_name_prefix=sys.argv[2], add_leaf_nodes=leaf_nodes,
-                                 add_leaf_to_leaf_edges=leaf_edges)
+                                 add_leaf_to_leaf_edges=leaf_edges, connection_string=CONNECTION_STRING)

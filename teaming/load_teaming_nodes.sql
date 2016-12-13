@@ -344,7 +344,6 @@ use teaming;
     Authorized_Official_Credential_Text VARCHAR(20))
 ;
 
-
 /* The health care provider taxonomy stores the NUCC taxonomies */
 drop table if exists healthcare_provider_taxonomies;
 create table healthcare_provider_taxonomies (
@@ -364,7 +363,7 @@ create table healthcare_provider_taxonomies (
 */
 
 /* If loading from a local file sytem should be LOAD DATA LOCAL INFILE if loading data remotely should be just LOAD DATA LOCAL INFILE */
-LOAD DATA LOCAL INFILE 'C:\\Users\\janos\\CMS_teaming\\data\\nucc_taxonomy_140_ansi.csv' INTO TABLE healthcare_provider_taxonomies
+LOAD DATA INFILE '/data/flat/nucc_taxonomy_161.csv' INTO TABLE healthcare_provider_taxonomies
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\r\n'
       IGNORE 1 LINES
@@ -385,7 +384,7 @@ LOAD DATA LOCAL INFILE 'C:\\Users\\Les\\CMS_teaming\\data\\NPPES_Data_Disseminat
 
 /* If loading from a local file sytem should be LOAD DATA LOCAL INFILE */
 
-LOAD DATA LOCAL INFILE 'C:\\Users\\janos\\cms_teaming\\data\\NPPES_Data_Dissemination_September_2014\\npidata_20050523-20140907.csv' INTO TABLE load_nppes_flat
+LOAD DATA INFILE '/data/flat/npidata_20050523-20161009.csv' INTO TABLE load_nppes_flat
       FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '\0'
       LINES TERMINATED BY '\n'
       IGNORE 1 LINES
@@ -732,8 +731,16 @@ create table tmp_NPPES_flat as
 
 drop table if exists tmp_NPPES_flat;
 create table tmp_NPPES_flat as
-  select * from load_nppes_flat where Provider_Business_Practice_Location_Address_State_Name = 'MA';
+  select * from load_nppes_flat;
 
+/*
+
+
+drop table if exists tmp_NPPES_flat;
+
+create table tmp_NPPES_flat as
+  select * from load_nppes_flat where Provider_Business_Practice_Location_Address_State_Name = 'MA';
+*/
 /*
 Run this query:
 
@@ -1996,8 +2003,8 @@ create table npi_summary_detailed as select * from tmp_npi_summary_detailed;
 create table npi_summary_detailed_primary_taxonomy as select * from tmp_npi_summary_detailed_primary_taxonomy; 
 create table npi_summary_detailed_taxonomy as select * from tmp_npi_summary_detailed_taxonomy; 
 create table nppes_contact as select * from tmp_nppes_contact; 
-create table nppes_flat as select * from tmp_nppes_flat;
-create table nppes_header as select * from tmp_nppes_header;
+create table nppes_flat as select * from tmp_NPPES_flat;
+create table nppes_header as select * from tmp_NPPES_header;
 create table other_provider_identifiers as select * from tmp_other_provider_identifiers; 
 create table provider_licenses select * from tmp_provider_licenses;
 

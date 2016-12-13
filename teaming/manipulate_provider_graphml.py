@@ -9,14 +9,15 @@ import sys
 
 def export_edges_to_csv(csv_edge_file_name, provider_graph_to_export):
     """Export edges to CSV"""
-    with open(csv_edge_file_name,"wb") as f:
+    with open(csv_edge_file_name, "wb") as f:
         csv_edges = csv.writer(f)
+        csv_edges.writerow("npi_from", "npi_to", "weight", "edge_type")
         for node1 in provider_graph_to_export.edge:
             for node2 in provider_graph_to_export.edge[node1]:
                 npi_from = node1
                 npi_to = node2
                 edge_data = provider_graph_to_export[node1][node2]
-                csv_edges.writerow((npi_from, npi_to, edge_data["weight"]))
+                csv_edges.writerow((npi_from, npi_to, edge_data["weight"], edge_data["edge_type"]))
 
 
 def export_nodes_to_csv(csv_node_file_name, provider_graph_to_export):
@@ -151,7 +152,6 @@ if __name__ == "__main__":
     parser.add_option("-f", "--file_name_prefix", dest="base_file_name", default=None, help="(OPTIONAL) Prefix for the output file names. For example, -d 'RI_pcp' would create the following file names: 'RI_pcp_node_db.csv', 'RI_pcp_edges.csv', 'RI_pcp.graphml'. If the -f parameter is not specified, then the names of the three output files will be prefixed by the name of the input file with '_modified' appended.")
     #parser.add_option("-j", "--json_file_name", dest="json_file_name", help="(Not Implemented). Read taxonomy mappings from a JSON configuration file ", default=None)
 
-
     (options, args) = parser.parse_args()
 
     if options.taxonomy_selection_fields:
@@ -173,7 +173,6 @@ if __name__ == "__main__":
     print("Reading GraphML file: '%s'" % graphml_file_name)
     provider_graph = nx.read_graphml(graphml_file_name)
     print("Number of nodes read is %s" % len(provider_graph.nodes()))
-
 
     if options.base_file_name is None:
         graphml_file_name_only = os.path.split(graphml_file_name)[1]

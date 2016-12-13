@@ -11,7 +11,7 @@ def export_edges_to_csv(csv_edge_file_name, provider_graph_to_export):
     """Export edges to CSV"""
     with open(csv_edge_file_name, "wb") as f:
         csv_edges = csv.writer(f)
-        csv_edges.writerow("npi_from", "npi_to", "weight", "edge_type")
+        csv_edges.writerow(["npi_from", "npi_to", "weight", "edge_type"])
         for node1 in provider_graph_to_export.edge:
             for node2 in provider_graph_to_export.edge[node1]:
                 npi_from = node1

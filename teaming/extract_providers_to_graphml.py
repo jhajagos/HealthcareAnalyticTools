@@ -26,6 +26,7 @@ import os
 from manipulate_provider_graphml import export_nodes_to_csv
 from manipulate_provider_graphml import export_edges_to_csv
 
+
 def load_configuration(file_name="config.json.example"):
     with open(file_name, "r") as f:
         configuration = json.load(f)
@@ -54,9 +55,11 @@ if "CONNECTION_STRING" in config:
 else:
     CONNECTION_STRING = "x"
 
+
 def logger(string_to_write=""):
     """Print to the standard input"""
     print(string_to_write)
+
 
 def get_new_cursor(connection_string="teaming", connection_type="pyodbc"):
     """Open the connection to the database and returns a cursor for executing queries"""
@@ -72,7 +75,7 @@ def get_new_cursor(connection_string="teaming", connection_type="pyodbc"):
         return connection      
 
 
-def row_to_dictionary(row_obj, exclude_None = True):
+def row_to_dictionary(row_obj, exclude_None=True):
     """Convert a row to a Python dictionary that is easier to work with"""
     if "cursor_description" in dir(row_obj):
         column_names = [desc[0] for desc in row_obj.cursor_description]
@@ -83,10 +86,10 @@ def row_to_dictionary(row_obj, exclude_None = True):
                     row_dict[column_names[i]] = row_obj[i]
         return row_dict
     else:
-	row_dict = dict(row_obj)
+        row_dict = dict(row_obj)
         new_row_dict = {}
         if exclude_None:
-	    for key in row_dict:
+            for key in row_dict:
                 if row_dict[key] is not None:
                      new_row_dict[key] = row_dict[key]
             return new_row_dict
@@ -183,7 +186,7 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
     core_node_query_to_execute = "insert into npi_to_export_to_graph (npi,node_type) select t.*,'C' from (\n%s\nunion\n%s)\nt;" % (query_first_part, query_second_part)
     
     if engine == "sqlalchemy":
-	if "%" in core_node_query_to_execute:
+        if "%" in core_node_query_to_execute:
             core_node_query_to_execute = "%%".join(core_node_query_to_execute.split("%"))
     logger(core_node_query_to_execute)
     cursor.execute(core_node_query_to_execute)

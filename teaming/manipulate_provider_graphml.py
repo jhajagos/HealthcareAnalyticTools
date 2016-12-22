@@ -5,6 +5,7 @@ import networkx as nx
 from optparse import OptionParser
 import os
 import sys
+import json
 
 
 def export_edges_to_csv(csv_edge_file_name, provider_graph_to_export):
@@ -137,27 +138,40 @@ if __name__ == "__main__":
     usage = "usage: %prog [options] arg1 arg2"
     parser = OptionParser(usage=usage)
 
+
     parser.add_option("-g", "--graphml_file", dest="graphml_file_name", help="(REQUIRED) Specifies the name of the GraphML file to use as input.")
     parser.add_option("-t", "--taxonomy_fields", dest="taxonomy_selection_fields",
                       help="(REQUIRED) A list of NUCC taxonomy codes to use for selection purposes.")
-    parser.add_option("-x", "--extract", dest="filter_graph", action="store_true",
+    parser.add_option("-x", "--extract", dest="filter_graph", action="store_true", default=False,
                       help="(OPTIONAL) Only output nodes that match the taxonomy selection fields. If the -x parameter is not supplied, the default behavior is to output all nodes. If the -t parameter is set, a new binary indicator field will be added to the output file. The value of the binary indicator will be set to 1 if any of the taxonomy codes are present in the node. The name of the binary indicator will be by default 'binary_indicator_taxonomy_field'. The name can be optionally specified using the -a parameter.")
     parser.add_option("-n", "--name", dest="indicator_field_name",
                       help="(OPTIONAL) Specify a name for the new binary indicator field that will be created using the -x parameter. If no -n parameter is provided, a default name will be supplied by the -x parameter.") #Records matching the taxonomy selection fields will have a value of 1 on that new binary field. If the -a parameter is not supplied, no new binary indicator field will be added.
     parser.add_option("-l", "--filter_leaves_only", dest="restrict_to_leaf_nodes", help="(OPTIONAL) Apply the selection criteria to leaf nodes only and include all core nodes. If the -l parameter is not supplied, the default behavior is to filter both leaf and core nodes.", action="store_true",
                       default=False)
-    parser.add_option("-r", "--remove_nodes", dest="remove_nodes", default=False, action="store_true", help="(OPTIONAL) Removes nodes that match the taxonomy selection criteria. If the -r parameter is not specified, then nodes that match the taxonomy selection criteria are retained.")
+    parser.add_option("-r", "--remove_nodes", dest="remove_nodes", default=False, action="store_true",
+                      help="(OPTIONAL) Removes nodes that match the taxonomy selection criteria. If the -r parameter is not specified, then nodes that match the taxonomy selection criteria are retained.")
     parser.add_option("-d", "--directory", dest="directory", default=None,
                       help="(OPTIONAL) The directory where the output file will be placed. If the -d parameter is not supplied it will be set to the current directory. Examples (Windows): [-d C:\\cms_teaming\\graphs\\] and (Unix) [-d /cms_teaming/graphs/]")
-    parser.add_option("-f", "--file_name_prefix", dest="base_file_name", default=None, help="(OPTIONAL) Prefix for the output file names. For example, -d 'RI_pcp' would create the following file names: 'RI_pcp_node_db.csv', 'RI_pcp_edges.csv', 'RI_pcp.graphml'. If the -f parameter is not specified, then the names of the three output files will be prefixed by the name of the input file with '_modified' appended.")
-    #parser.add_option("-j", "--json_file_name", dest="json_file_name", help="(Not Implemented). Read taxonomy mappings from a JSON configuration file ", default=None)
+    parser.add_option("-f", "--file_name_prefix", dest="base_file_name", default=None,
+                      help="(OPTIONAL) Prefix for the output file names. For example, -d 'RI_pcp' would create the following file names: 'RI_pcp_node_db.csv', 'RI_pcp_edges.csv', 'RI_pcp.graphml'. If the -f parameter is not specified, then the names of the three output files will be prefixed by the name of the input file with '_modified' appended.")
+
+    parser.add_option("-j", "--json_file_name", dest="json_file_name", help="Read taxonomy mappings from a JSON file which contains a list of taxonomies.", default=None)
 
     (options, args) = parser.parse_args()
+
+    import pprint
+    pprint.pprint(options)
+
 
     if options.taxonomy_selection_fields:
         taxonomy_list = options.taxonomy_selection_fields.split(',')
     else:
         taxonomy_list = []
+
+    if options.json_file_name is not None:
+        print("Loading taxonomies from file: '%s'" % options.json_file_name)
+        with open(options.json_file_name, 'r') as f:
+            taxonomy_list += json.load(f)
 
     if options.graphml_file_name:
         graphml_file_name = options.graphml_file_name
@@ -185,6 +199,7 @@ if __name__ == "__main__":
     graphml_file_name = os.path.abspath(graphml_file_name)
     original_directory, base_graphml_filename = os.path.split(graphml_file_name)
     print(original_directory, base_graphml_filename)
+
     if options.directory is None:
         if len(original_directory) == 0:
             base_directory = os.path.abspath("./")
@@ -193,7 +208,7 @@ if __name__ == "__main__":
     else:
         base_directory = options.directory
 
-    if True: #options.indicator_field_name:
+    if True:
         if options.indicator_field_name:
             indicator_field_name = options.indicator_field_name
         else:
@@ -203,10 +218,21 @@ if __name__ == "__main__":
 
         manipulated_graph = add_indicator_taxonomy_field_to_graph(provider_graph, taxonomy_list, indicator_field_name)
 
+    print("++++++++++++++++++++++")
+    print(options.filter_graph)
+    print("**********************")
+
+
+    print("++++++++++++++++++++++")
+    print(options.remove_nodes)
+    print("**********************")
+
     if options.filter_graph:
 
         number_of_nodes = len(provider_graph.nodes())
         print("Filtering graph by taxonomy")
+
+
         keep_nodes_that_match = not options.remove_nodes
         if keep_nodes_that_match:
             print("Only nodes that match will be kept")
@@ -223,6 +249,3 @@ if __name__ == "__main__":
 
     print("Exporting filtered graph to GraphML file '%s' to directory '%s'" % (manipulated_graphml_file_name, base_directory))
     nx.write_graphml(manipulated_graph, os.path.join(base_directory, manipulated_graphml_file_name))
-
-
-

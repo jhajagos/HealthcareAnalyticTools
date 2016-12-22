@@ -237,13 +237,13 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
   neg1.node_type as to_node_type, negf.node_type as from_node_type
    from %s rt1 join npi_to_export_to_graph neg1 on rt1.%s = neg1.npi
        join npi_to_export_to_graph negf on negf.npi = rt1.%s
-  where neg1.node_type = 'C'""" % (field_name_to_relationship, field_name_from_relationship, field_name_weight, referral_table_name, field_name_to_relationship, field_name_from_relationship)
+  where neg1.node_type = 'C'""" % (field_name_from_relationship, field_name_to_relationship, field_name_weight, referral_table_name, field_name_to_relationship, field_name_from_relationship)
 
     query_second_part_edges = """select rt2.%s, rt2.%s, rt2.%s,
   negt.node_type as to_node_type, neg2.node_type as from_node_type
    from %s rt2 join npi_to_export_to_graph neg2 on rt2.%s = neg2.npi
        join npi_to_export_to_graph negt on negt.npi = rt2.%s
-  where neg2.node_type = 'C'""" % (field_name_to_relationship, field_name_from_relationship, field_name_weight, referral_table_name, field_name_from_relationship, field_name_to_relationship)
+  where neg2.node_type = 'C'""" % (field_name_from_relationship, field_name_to_relationship, field_name_weight, referral_table_name, field_name_from_relationship, field_name_to_relationship)
 
     add_core_query_to_execute = "%s\nunion\n%s" % (query_first_part_edges, query_second_part_edges)
 
@@ -259,8 +259,9 @@ def extract_provider_network(where_criteria, referral_table_name=REFERRAL_TABLE_
         negt3.node_type as to_node_type, negf3.node_type as from_node_type
       from %s rt3 join npi_to_export_to_graph negt3 on rt3.%s = negt3.npi
       join npi_to_export_to_graph negf3 on rt3.%s = negf3.npi
+      join npi_to_export_to_graph negf3 on rt3.%s = negf3.npi
       where negt3.node_type = 'L' and negf3.node_type = 'L'
-      ;""" % (field_name_to_relationship, field_name_from_relationship, field_name_weight, referral_table_name,
+      ;""" % (field_name_from_relationship, field_name_to_relationship, field_name_weight, referral_table_name,
               field_name_to_relationship, field_name_from_relationship)
         cursor_result = cursor.execute(leaf_query_to_execute)
         logger(leaf_query_to_execute)

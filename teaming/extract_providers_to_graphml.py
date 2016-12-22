@@ -120,9 +120,9 @@ def add_edges_to_graph(cursor, graph, name="shares patients"):
     for edge in cursor:
         if edge.to_node_type == 'C' and edge.from_node_type == 'C':
             edge_type = 'core-to-core'
-        elif edge.to_node_type == 'L' and edge.from_node_type == 'C':
+        elif edge.from_node_type == 'L' and edge.to_node_type == 'C':
             edge_type = 'leaf-to-core'
-        elif edge.to_node_type == 'C' and edge.from_node_type == 'L':
+        elif edge.from_node_type == 'C' and edge.to_node_type == 'L':
             edge_type = 'core-to-leaf'
         elif edge.to_node_type == 'L' and edge.from_node_type == 'L':
             edge_type = 'leaf-to-leaf'

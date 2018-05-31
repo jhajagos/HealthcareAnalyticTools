@@ -4,7 +4,10 @@ PostGreSQL proecessing script
 
 Create table "NPPES_flat"
 
+
 */
+
+--create table "NPPES_flat" as select * from npidata_pfile_20050523_20180513;
 
 create unique index pk_npi_nppes_flat on "NPPES_flat"("NPI");
 

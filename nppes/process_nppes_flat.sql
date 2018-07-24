@@ -946,3 +946,4 @@ create table "t1_NPPES_summary_detailed" as
    
  create unique index pk_nppes_summary_detailed on "t1_NPPES_summary_detailed"("NPI");
  
+ 
